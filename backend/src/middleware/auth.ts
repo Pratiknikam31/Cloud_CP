@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { UserRole } from '../models/User';
+import { UserRole } from '../types/entities';
+import { env } from '../config/env';
 
 export interface AuthUser {
   id: string;
@@ -19,7 +20,14 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1];
-    const secret = process.env.JWT_SECRET || 'smarthospital_jwt_super_secret_key_2026_production_ready';
+    // No fallback secret: if JWT_SECRET is missing this throws a ConfigError (500)
+    // instead of silently accepting tokens signed with a publicly known key.
+    let secret: string;
+    try {
+      secret = env.jwtSecret();
+    } catch (err) {
+      return next(err);
+    }
 
     try {
       const decoded = jwt.verify(token, secret) as any;

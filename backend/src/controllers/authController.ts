@@ -1,16 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
+import { randomUUID } from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { User, IUser } from '../models/User';
-import { Patient } from '../models/Patient';
-import { Doctor } from '../models/Doctor';
+import { IUser } from '../types/entities';
+import { departmentRepo, patientRepo, userRepo } from '../repositories';
+import { createUserAccount, EMAIL_TAKEN, findUserByEmail } from '../repositories/userAccounts';
+import { findDoctorByUser, findPatientByUser } from '../repositories/profiles';
+import { populate } from '../db/populate';
+import { STATS, statsAdd } from '../db/keys';
+import { nowIso, TxOp } from '../db/dynamo';
+import { newPatientId } from '../utils/ids';
+import { ConflictError } from '../utils/errors';
+import { env } from '../config/env';
 import { registerSchema, loginSchema, changePasswordSchema } from '../validators/authValidator';
 import { AuthRequest } from '../middleware/auth';
 import { logAudit } from '../utils/auditLogger';
 
 const generateToken = (user: IUser): string => {
-  const secret = process.env.JWT_SECRET || 'smarthospital_jwt_super_secret_key_2026_production_ready';
-  const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
   return jwt.sign(
     {
       id: user._id,
@@ -18,8 +24,8 @@ const generateToken = (user: IUser): string => {
       role: user.role,
       name: user.name
     },
-    secret,
-    { expiresIn: expiresIn as jwt.SignOptions['expiresIn'] }
+    env.jwtSecret(),
+    { expiresIn: env.jwtExpiresIn() as jwt.SignOptions['expiresIn'] }
   );
 };
 
@@ -27,34 +33,26 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
   try {
     const validatedData = registerSchema.parse(req.body);
 
-    const existingUser = await User.findOne({ email: validatedData.email });
+    const existingUser = await findUserByEmail(validatedData.email);
     if (existingUser) {
-      return res.status(400).json({ success: false, message: 'Email address is already registered' });
+      return res.status(400).json({ success: false, message: EMAIL_TAKEN });
     }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(validatedData.password, salt);
 
-    const user = await User.create({
-      name: validatedData.name,
-      email: validatedData.email,
-      password: hashedPassword,
-      role: validatedData.role,
-      phone: validatedData.phone || '',
-    });
-
-    // Auto-create patient profile if registering as patient
-    if (user.role === 'patient') {
-      const count = await Patient.countDocuments();
-      const patientId = `P-2026-${(count + 1).toString().padStart(4, '0')}`;
-
-      await Patient.create({
+    // Auto-create patient profile if registering as patient (same transaction as the user)
+    const userId = randomUUID();
+    const extra: TxOp[] = [];
+    if (validatedData.role === 'patient') {
+      const patientId = await newPatientId();
+      const { ops } = patientRepo.prepareCreate({
         patientId,
-        user: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone || '555-0100',
-        dob: new Date('1990-01-01'),
+        user: userId,
+        name: validatedData.name.trim(),
+        email: validatedData.email.trim().toLowerCase(),
+        phone: validatedData.phone || '555-0100',
+        dob: new Date('1990-01-01').toISOString(),
         gender: 'other',
         bloodGroup: 'O+',
         address: '123 Health Ave, Medical City',
@@ -63,9 +61,34 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
           relationship: 'Family',
           phone: '555-0199'
         },
+        insuranceProvider: '',
+        insurancePolicyNumber: '',
         allergies: ['None'],
-        medicalHistory: ['General checkup']
+        medicalHistory: ['General checkup'],
+        profileImage: '',
       });
+      extra.push(...ops, statsAdd(STATS.totals, { patients: 1 }));
+    }
+
+    let user: IUser;
+    try {
+      user = await createUserAccount(
+        {
+          _id: userId,
+          name: validatedData.name,
+          email: validatedData.email,
+          password: hashedPassword,
+          role: validatedData.role,
+          phone: validatedData.phone || '',
+        },
+        extra
+      );
+    } catch (err) {
+      // The email guard lost a race with a concurrent registration.
+      if (err instanceof ConflictError && err.message === EMAIL_TAKEN) {
+        return res.status(400).json({ success: false, message: EMAIL_TAKEN });
+      }
+      throw err;
     }
 
     const token = generateToken(user);
@@ -74,7 +97,7 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       user,
       action: 'USER_REGISTERED',
       entity: 'User',
-      entityId: user._id.toString(),
+      entityId: user._id,
       description: `New user account created with role ${user.role}`,
       ipAddress: req.ip
     });
@@ -101,7 +124,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
   try {
     const { email, password } = loginSchema.parse(req.body);
 
-    const user = await User.findOne({ email }).select('+password');
+    const user = await findUserByEmail(email);
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
@@ -115,8 +138,10 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
       return res.status(403).json({ success: false, message: 'Account has been deactivated. Contact Admin.' });
     }
 
-    user.lastLogin = new Date();
-    await user.save();
+    // lastLogin is informational; a concurrent update simply loses this timestamp.
+    await userRepo.update(user._id, () => ({ lastLogin: nowIso() })).catch((err) => {
+      if (!(err instanceof ConflictError)) throw err;
+    });
 
     const token = generateToken(user);
 
@@ -124,7 +149,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
       user,
       action: 'USER_LOGIN',
       entity: 'User',
-      entityId: user._id.toString(),
+      entityId: user._id,
       description: `User ${user.email} logged in successfully`,
       ipAddress: req.ip
     });
@@ -153,16 +178,17 @@ export const getMe = async (req: AuthRequest, res: Response, next: NextFunction)
       return res.status(401).json({ success: false, message: 'Unauthorized' });
     }
 
-    const user = await User.findById(req.user.id);
+    const user = await userRepo.get(req.user.id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    let extraProfile = null;
+    let extraProfile: any = null;
     if (user.role === 'patient') {
-      extraProfile = await Patient.findOne({ user: user._id });
+      extraProfile = await findPatientByUser(user._id);
     } else if (user.role === 'doctor') {
-      extraProfile = await Doctor.findOne({ user: user._id }).populate('department');
+      extraProfile = await findDoctorByUser(user._id);
+      if (extraProfile) await populate([extraProfile], 'department', departmentRepo);
     }
 
     return res.status(200).json({
@@ -189,14 +215,14 @@ export const updateProfile = async (req: AuthRequest, res: Response, next: NextF
     if (!req.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
     const { name, phone, avatar } = req.body;
-    const user = await User.findById(req.user.id);
+    const user = await userRepo.update(req.user.id, () => {
+      const patch: Partial<IUser> = {};
+      if (name && typeof name === 'string') patch.name = name;
+      if (phone && typeof phone === 'string') patch.phone = phone;
+      if (avatar && typeof avatar === 'string') patch.avatar = avatar;
+      return patch;
+    });
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-    if (name) user.name = name;
-    if (phone) user.phone = phone;
-    if (avatar) user.avatar = avatar;
-
-    await user.save();
 
     return res.status(200).json({
       success: true,
@@ -221,7 +247,7 @@ export const changePassword = async (req: AuthRequest, res: Response, next: Next
 
     const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
 
-    const user = await User.findById(req.user.id).select('+password');
+    const user = await userRepo.get(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
@@ -230,8 +256,12 @@ export const changePassword = async (req: AuthRequest, res: Response, next: Next
     }
 
     const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newPassword, salt);
-    await user.save();
+    const password = await bcrypt.hash(newPassword, salt);
+    await userRepo.update(user._id, (current) => {
+      // Refuse if the password was changed by another request since we checked it.
+      if (current.password !== user.password) throw new ConflictError('Password was changed by another request. Please retry.');
+      return { password };
+    });
 
     return res.status(200).json({
       success: true,
