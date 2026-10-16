@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: cloudcare-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: smarthospital
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - cloudcare-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cloudcare-backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      CLIENT_URL: http://localhost:5173
+      MONGODB_URI: mongodb://mongodb:27017/smarthospital
+      JWT_SECRET: smarthospital_jwt_super_secret_key_2026_production_ready
+    depends_on:
+      - mongodb
+    networks:
+      - cloudcare-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cloudcare-frontend
+    restart: always
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    networks:
+      - cloudcare-network
+
+volumes:
+  mongo-data:
+
+networks:
+  cloudcare-network:
+    driver: bridge
