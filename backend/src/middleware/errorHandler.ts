@@ -59,7 +59,9 @@ export const errorHandler = (
     }
   }
 
-  console.error(`[Error] ${req.method} ${req.originalUrl} (${statusCode}):`, err?.name, err?.message, statusCode >= 500 ? err?.stack : '');
+  if (statusCode >= 500 || process.env.NODE_ENV !== 'test') {
+    console.error(`[Error] ${req.method} ${req.originalUrl} (${statusCode}):`, err?.name, err?.message, statusCode >= 500 ? err?.stack : '');
+  }
 
   res.status(statusCode).json({
     success: false,

@@ -29,7 +29,9 @@ export const PharmacyDashboard: React.FC = () => {
       ]);
 
       if (medsRes.data?.medicines) setMedicines(medsRes.data.medicines);
-      if (rxRes.data?.prescriptions) setPrescriptions(rxRes.data.prescriptions);
+      // GET /emr/prescriptions returns { success, prescriptions } at the top level.
+      const rxList = (rxRes as any).prescriptions ?? rxRes.data?.prescriptions;
+      if (rxList) setPrescriptions(rxList);
       if (predRes.data?.predictions) setPredictions(predRes.data.predictions);
     } catch (err) {
       console.error('Failed to load pharmacy dashboard data:', err);

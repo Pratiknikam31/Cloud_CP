@@ -37,7 +37,7 @@ export const slotLockKey = (doctorId: string, dayKey: string, timeSlot: string) 
 // ---- Aggregate / statistics items (maintained with atomic ADD) ----
 export const STATS = {
   totals: { PK: 'STATS#TOTALS', SK: 'TOTALS' }, // patients, appointments
-  billing: { PK: 'STATS#BILLING', SK: 'BILLING' }, // totalPaid, totalBalance, totalBilled, count_<status>
+  billing: { PK: 'STATS#BILLING', SK: 'BILLING' }, // totalBilled, totalPaid, totalBalance, count, count_<status>
   auditAction: (action: string) => ({ PK: 'STATS#AUDIT_ACTION', SK: action }),
   auditEntity: (entity: string) => ({ PK: 'STATS#AUDIT_ENTITY', SK: entity }),
   appointmentsByDepartment: (departmentId: string) => ({ PK: 'STATS#APPT_DEPT', SK: departmentId }),

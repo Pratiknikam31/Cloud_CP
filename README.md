@@ -3,12 +3,15 @@
 [![React](https://img.shields.io/badge/React-18.x-blue.svg)](https://reactjs.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-20.x-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
-[![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-brightgreen.svg)](https://www.mongodb.com/)
+[![Amazon DynamoDB](https://img.shields.io/badge/Amazon-DynamoDB-4053D6.svg)](https://aws.amazon.com/dynamodb/)
+[![Vercel](https://img.shields.io/badge/Deploy-Vercel-black.svg)](https://vercel.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.x-cyan.svg)](https://tailwindcss.com/)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED.svg)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-An enterprise-grade, cloud-native **Smart Hospital SaaS Platform** built with React, Vite, TypeScript, Express, and MongoDB.
+An enterprise-grade, cloud-native **Smart Hospital SaaS Platform** built with React, Vite, TypeScript, Express, and Amazon DynamoDB, deployable to Vercel.
+
+> **Setting up AWS, local development or Vercel? Follow [SETUP.md](SETUP.md)**: the complete, step-by-step guide (DynamoDB table, IAM/OIDC, environment variables, deployment, verification and cost safety).
 
 Engineered with 8-level Role-Based Access Control (RBAC), AI symptom-to-specialist clinical routing, digital outpatient queue management, smart pharmacy inventory depletion forecasting, visual room/bed grid allocations, itemized billing invoices, and HIPAA security audit logging.
 
@@ -42,6 +45,7 @@ All demo user accounts are pre-seeded with the password: **`password123`**
 | **Patient 2** | `maria@smarthospital.org` | `/patient/dashboard` |
 | **Receptionist** | `reception@smarthospital.org` | `/reception/dashboard` |
 | **Nurse Station** | `nurse@smarthospital.org` | `/admin/beds` |
+| **Patient 3** | `david@smarthospital.org` | `/patient/dashboard` |
 | **Lab Technician** | `lab@smarthospital.org` | `/lab/dashboard` |
 | **Pharmacist** | `pharmacy@smarthospital.org` | `/pharmacy/dashboard` |
 
@@ -52,20 +56,22 @@ All demo user accounts are pre-seeded with the password: **`password123`**
 ### Option A: Local Node.js Setup
 
 #### 1. Prerequisites
-* Node.js v18+ or v20+
-* MongoDB running locally (`mongodb://localhost:27017/smarthospital`) or a MongoDB Atlas cluster URI.
+* Node.js 20+ (22 LTS recommended)
+* An Amazon DynamoDB table `HospitalData` and AWS credentials for it: see [SETUP.md](SETUP.md) sections B to D.
+  (For offline work you can use DynamoDB Local instead; see SETUP.md section E5.)
 
-#### 2. Backend Installation & Database Seeding
+#### 2. Backend Installation & Demo Data
 ```bash
 cd backend
 npm install
+cp .env.example .env      # then fill in JWT_SECRET, AWS_REGION and credentials (SETUP.md section D)
 
-# Seed the database with comprehensive demo datasets (users, doctors, patients, beds, medicines, lab tests, bills)
+# Optional: insert the demo datasets (users, doctors, patients, beds, medicines, lab tests, bills) into an EMPTY table
 npm run seed
 
 # Start development API server
 npm run dev
-# API running on http://localhost:5000
+# API running on http://localhost:5000  (check http://localhost:5000/api/health?db=1)
 ```
 
 #### 3. Frontend Installation & Launch
@@ -80,22 +86,19 @@ npm run dev
 
 ---
 
-### Option B: Docker Compose Deployment
+### Option B: Vercel (production)
 
-Run the entire multi-container stack (MongoDB 7.0 + Backend API + Frontend Nginx) with a single command:
+The backend and frontend deploy as two Vercel projects (root directories `backend` and `frontend`), with the data in DynamoDB. Step-by-step instructions: [SETUP.md, section F](SETUP.md#f-vercel-deployment).
+
+### Option C: Docker Compose (local containers)
 
 ```bash
-docker compose up --build -d
+docker compose up --build -d                        # backend + frontend, using the DynamoDB table configured in backend/.env
+docker compose --profile local-db up --build -d     # additionally starts DynamoDB Local on :8000
 ```
 
 * **Frontend Web App**: http://localhost:5173
 * **Backend REST API**: http://localhost:5000/api/health
-* **MongoDB**: localhost:27017
-
-To populate the database inside the container:
-```bash
-docker compose exec backend npm run seed
-```
 
 ---
 
@@ -199,7 +202,9 @@ All protected endpoints require HTTP header: `Authorization: Bearer <JWT_TOKEN>`
 
 ---
 
-## 🗄️ Database Models (16 Mongoose Schemas)
+## 🗄️ Data Model (16 entity types in one DynamoDB table)
+
+All entities are stored in a single DynamoDB table (`HospitalData`) with three global secondary indexes; see [SETUP.md, Appendix 1](SETUP.md#appendix-1--data-model-how-the-table-is-used) for the key design. TypeScript types live in `backend/src/types/entities.ts`.
 
 | Model | Purpose |
 |---|---|

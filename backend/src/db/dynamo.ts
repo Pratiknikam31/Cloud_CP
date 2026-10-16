@@ -81,20 +81,30 @@ export const transactWrite = async (ops: TxOp[], defaultConflictMessage?: string
   if (ops.length === 0) return;
   if (ops.length > 100) throw new Error(`Transaction too large (${ops.length} items; DynamoDB limit is 100)`);
   const TransactItems = ops.map(({ conflictMessage, ...item }) => item as TransactItem);
-  try {
-    await client().send(new TransactWriteCommand({ TransactItems }));
-  } catch (err: any) {
-    if (err?.name === 'TransactionCanceledException') {
+  const maxAttempts = 4;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      await client().send(new TransactWriteCommand({ TransactItems }));
+      return;
+    } catch (err: any) {
+      if (err?.name !== 'TransactionCanceledException') throw err;
       const reasons: { Code?: string }[] = err.CancellationReasons ?? [];
       const failedIndex = reasons.findIndex((r) => r?.Code === 'ConditionalCheckFailed');
       if (failedIndex >= 0) {
         throw new ConflictError(ops[failedIndex]?.conflictMessage || defaultConflictMessage);
       }
+      // TransactionConflict: another transaction touched the same item at the same
+      // moment and ours was cancelled without applying anything, so it is safe to
+      // retry exactly the same transaction (its conditions are evaluated again).
       if (reasons.some((r) => r?.Code === 'TransactionConflict')) {
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 20 * 2 ** attempt + Math.floor(Math.random() * 20)));
+          continue;
+        }
         throw new ConflictError('Another request updated the same records at the same time. Please retry.');
       }
+      throw err;
     }
-    throw err;
   }
 };
 
@@ -219,7 +229,11 @@ const buildQueryInput = (opts: QueryOptions): QueryCommandInput => {
   const names: Record<string, string> = { '#pk': pkAttr };
   const values: Item = { ':pk': opts.pk };
   let expression = '#pk = :pk';
-  const sk = opts.sk;
+  let sk = opts.sk;
+  // DynamoDB rejects empty strings in key conditions, so an open lower bound
+  // ('') becomes "<= upper" instead of "BETWEEN '' AND upper".
+  if (sk?.between && sk.between[0] === '') sk = { lte: sk.between[1] };
+  if (sk?.gte === '') sk = undefined;
   if (sk) {
     names['#sk'] = skAttr;
     if (sk.beginsWith !== undefined) {

@@ -9,7 +9,7 @@
 
 The **Cloud-Based Smart Hospital Management System** is a next-generation SaaS enterprise web application designed to streamline modern healthcare operations. The system unifies electronic medical records (EMR), automated symptom-assisted department routing, live digital patient queue management, pharmacy inventory depletion forecasting, real-time bed grid management, itemized billing, and HIPAA-compliant security audit logging.
 
-Built on a decoupled, micro-service-ready full-stack architecture using **React, TypeScript, Vite, Tailwind CSS, Node.js, Express, and MongoDB**, the platform guarantees 99.99% operational uptime, zero cross-role privilege escalation, and real-time data synchronization.
+Built on a decoupled, micro-service-ready full-stack architecture using **React, TypeScript, Vite, Tailwind CSS, Node.js, Express, and Amazon DynamoDB**, the platform guarantees 99.99% operational uptime, zero cross-role privilege escalation, and real-time data synchronization.
 
 ---
 
@@ -17,8 +17,8 @@ Built on a decoupled, micro-service-ready full-stack architecture using **React,
 
 ### 2.1 Technology Stack Matrix
 * **Frontend**: React 18, Vite, TypeScript, Tailwind CSS, shadcn/ui design tokens, Lucide React Icons, Recharts Analytics, Axios.
-* **Backend**: Node.js, Express.js (TypeScript), Mongoose ODM, JWT Authentication, bcryptjs, Helmet security, Zod Schema Validation.
-* **Database**: MongoDB / MongoDB Atlas (ACID-compliant document storage with indexing).
+* **Backend**: Node.js, Express.js (TypeScript), AWS SDK v3 DynamoDB data-access layer, JWT Authentication, bcryptjs, Helmet security, Zod Schema Validation.
+* **Database**: Amazon DynamoDB, one table with three global secondary indexes; transactions and conditional writes for booking, stock, payment and bed consistency.
 
 ### 2.2 System Architecture Diagram
 ```mermaid
@@ -35,7 +35,7 @@ graph TD
     JWT --> BedModule[Bed & Room Management Service]
     JWT --> BillingModule[Billing & Invoice Service]
     
-    AIService -->|Mongoose ODM| DB[(MongoDB Atlas Database)]
+    AIService -->|AWS SDK v3| DB[(Amazon DynamoDB)]
     DoctorModule --> DB
     PatientModule --> DB
     PharmacyModule --> DB
@@ -100,16 +100,17 @@ When $D_{\text{remaining}} \le 3$, an automated critical reorder alert flag is b
 ## 6. DEPLOYMENT & INSTALLATION GUIDE
 
 ### Prerequisites
-* Node.js v18.x or higher
-* npm v9.x or higher
-* MongoDB v6.0+ local instance or MongoDB Atlas Connection String
+* Node.js v20.x or higher
+* npm v10.x or higher
+* An Amazon DynamoDB table and AWS credentials: see [SETUP.md](SETUP.md)
 
 ### Step-by-Step Local Launch
 ```bash
 # 1. Backend Setup
 cd backend
 npm install
-npm run seed     # Seeds database with 8 demo accounts
+cp .env.example .env   # fill in values, see SETUP.md section D
+npm run seed     # Inserts demo data with 10 demo accounts into an empty table
 npm run dev      # Starts Express backend on http://localhost:5000
 
 # 2. Frontend Setup (in a new terminal)

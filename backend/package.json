@@ -1,14 +1,16 @@
 {
   "name": "smarthospital-backend",
   "version": "1.0.0",
-  "description": "Cloud-Based Smart Hospital Management System Backend API",
+  "description": "Cloud-Based Smart Hospital Management System Backend API (Express + Amazon DynamoDB)",
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "seed": "ts-node-dev src/seeders/seed.ts",
-    "test": "jest --detectOpenHandles --forceExit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
+    "db:create-table": "ts-node --transpile-only src/scripts/createTable.ts",
+    "seed": "ts-node --transpile-only src/seeders/seed.ts",
+    "test": "jest --forceExit"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "3.1145.0",
@@ -21,7 +23,6 @@
     "express-rate-limit": "^7.3.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.4.1",
     "morgan": "^1.10.0",
     "zod": "^3.23.8"
   },
@@ -40,5 +41,8 @@
     "ts-node": "10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

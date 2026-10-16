@@ -6,20 +6,13 @@
 
 | Service | Required? | Purpose | Where to Configure |
 |---|:---:|---|---|
-| **MongoDB Atlas** | ✅ **YES** | Primary database for all data (users, patients, doctors, appointments, medicines, etc.) | `backend/.env` → `MONGODB_URI` |
+| **Amazon DynamoDB** | ✅ **YES** | Primary database for all data (users, patients, doctors, appointments, medicines, etc.), one table `HospitalData` | `backend/.env` → `AWS_REGION`, `DYNAMODB_TABLE_NAME` + AWS credentials (see [SETUP.md](SETUP.md)) |
 | **Gemini API** | ❌ **NO** | Not used anywhere in the current codebase. AI features use a local keyword-matching algorithm instead. | — |
-| **Cloudinary** | ❌ **NO** | `.env` has placeholder keys but no code actually uploads or fetches images via Cloudinary. Safe to ignore. | — |
+| **Cloudinary** | ❌ **NO** | No code uploads or fetches images via Cloudinary; its variables were removed from `.env.example`. | — |
 
-### MongoDB Atlas Setup (The Only Required Connection)
+### Amazon DynamoDB Setup (The Only Required Connection)
 
-1. Go to [cloud.mongodb.com](https://cloud.mongodb.com) → **Database** → **Connect** → **Drivers**
-2. Copy your connection string (e.g. `mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/smarthospital?retryWrites=true&w=majority`)
-3. Paste into `backend/.env`:
-   ```env
-   MONGODB_URI=mongodb+srv://<your-actual-connection-string>
-   ```
-4. In Atlas → **Network Access** → Add your IP or `0.0.0.0/0` for development
-5. Restart backend: `npm run dev`
+Follow [SETUP.md](SETUP.md): create the `HospitalData` table (section B), a least-privilege IAM policy and credentials (section C), then fill in `backend/.env` (section D) and run `npm run dev`. Verify with `http://localhost:5000/api/health?db=1`.
 
 ---
 
@@ -177,7 +170,7 @@
 | **Roles** | `super_admin`, `hospital_admin` |
 | **Input** | Search by event or user ID |
 | **Output** | Table: Timestamp, User Identity, Action Event (e.g. `VIEW_EMR_RECORD`, `UNAUTHORIZED_LOGIN_ATTEMPT`), Target Resource, IP Address, Result (SUCCESS/BLOCKED) |
-| **External API** | ❌ None — audit logs are written to MongoDB `AuditLog` collection by the `logAudit()` utility on every sensitive action |
+| **External API** | ❌ None — audit logs are written to the DynamoDB table (items `AUDIT#<id>`) by the `logAudit()` utility on every sensitive action |
 
 ---
 
@@ -235,8 +228,8 @@
 | Layer | Technologies |
 |---|---|
 | **Frontend** | React 18, Vite, TypeScript, Tailwind CSS, Lucide React Icons, Recharts, Axios, React Router v6 |
-| **Backend** | Node.js, Express.js, TypeScript, Mongoose ODM, JWT, bcryptjs, Zod validation, Helmet, Morgan |
-| **Database** | MongoDB (Atlas recommended) |
+| **Backend** | Node.js, Express.js, TypeScript, AWS SDK for JavaScript v3 (DynamoDB), JWT, bcryptjs, Zod validation, Helmet, Morgan |
+| **Database** | Amazon DynamoDB (single table, on-demand) |
 | **External APIs** | **None** — all AI features use local algorithms, no third-party API keys needed |
 
 ---

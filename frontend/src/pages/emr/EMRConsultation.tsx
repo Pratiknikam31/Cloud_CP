@@ -91,9 +91,11 @@ export const EMRConsultation: React.FC = () => {
   // Load existing records when patient changes
   useEffect(() => {
     if (!selectedPatientId) return;
-    emrApi.getRecords({ patientId: selectedPatientId })
+    emrApi.getRecords({ patient: selectedPatientId })
       .then((res) => {
-        if (res.data?.records) setExistingRecords(res.data.records);
+        // The API returns { success, records, pagination } at the top level.
+        const records = res.records ?? res.data?.records;
+        if (records) setExistingRecords(records);
       })
       .catch(() => {});
   }, [selectedPatientId]);
@@ -142,7 +144,7 @@ export const EMRConsultation: React.FC = () => {
         await emrApi.createPrescription({
           patient: selectedPatientId,
           doctor: selectedDoctorId,
-          medicalRecord: recordRes.data?.record?._id,
+          medicalRecord: recordRes.record?._id ?? recordRes.data?.record?._id,
           medicines: medicines.map(m => ({
             medicineName: m.medicineName,
             dosage: m.dosage || '1 unit',
@@ -158,8 +160,10 @@ export const EMRConsultation: React.FC = () => {
       setTimeout(() => setSavedSuccess(false), 5000);
 
       // Refresh patient records
-      emrApi.getRecords({ patientId: selectedPatientId }).then((res) => {
-        if (res.data?.records) setExistingRecords(res.data.records);
+      emrApi.getRecords({ patient: selectedPatientId }).then((res) => {
+        // The API returns { success, records, pagination } at the top level.
+        const records = res.records ?? res.data?.records;
+        if (records) setExistingRecords(records);
       });
     } catch (err: any) {
       setErrorMessage(err.response?.data?.message || err.message || 'Error saving EMR record.');

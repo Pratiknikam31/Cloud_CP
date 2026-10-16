@@ -2,10 +2,10 @@ import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { recommendDepartment } from '../services/aiService';
 import { predictInventoryStatus } from '../services/inventoryService';
-import { Doctor } from '../models/Doctor';
-import { Department } from '../models/Department';
-import { Medicine } from '../models/Medicine';
-import { Bed } from '../models/Bed';
+import { departmentRepo, doctorRepo, medicineRepo } from '../repositories';
+import { queryAll, queryPage } from '../db/dynamo';
+import { typePartition } from '../db/keys';
+import { populate } from '../db/populate';
 import { symptomCheckSchema } from '../validators/schemas';
 
 export const analyzeSymptoms = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -13,25 +13,38 @@ export const analyzeSymptoms = async (req: AuthRequest, res: Response, next: Nex
     const validated = symptomCheckSchema.parse(req.body);
     const recommendation = recommendDepartment(validated.symptoms);
 
-    // Look up department by code or name
-    const department = await Department.findOne({
-      $or: [
-        { code: { $regex: new RegExp(`^${recommendation.departmentCode}$`, 'i') } },
-        { name: { $regex: new RegExp(recommendation.departmentName, 'i') } }
-      ]
-    });
+    // Look up department by code (exact, case-insensitive) or name (contains).
+    // Departments are a small catalog, so it is loaded and matched in memory.
+    const code = recommendation.departmentCode.toLowerCase();
+    const name = recommendation.departmentName.toLowerCase();
+    const departmentItems = await queryAll({ index: 'GSI1', pk: typePartition('DEPT') });
+    const found = departmentItems.find(
+      (d) => String(d.code ?? '').toLowerCase() === code || String(d.name ?? '').toLowerCase().includes(name)
+    );
+    const department = found ? departmentRepo.fromItem(found) : null;
 
     let doctors: any[] = [];
     if (department) {
-      doctors = await Doctor.find({ department: department._id, status: 'active' })
-        .populate('department', 'name code')
-        .limit(5);
+      // Doctors of a department: GSI2 DEPT#<id>
+      const { items } = await queryPage({
+        index: 'GSI2',
+        pk: `DEPT#${department._id}`,
+        sk: { beginsWith: 'DOCTOR#' },
+        filter: (d) => d.status === 'active',
+        limit: 5,
+      });
+      doctors = items.map((i) => doctorRepo.fromItem(i));
     } else {
       // Return top active doctors
-      doctors = await Doctor.find({ status: 'active' })
-        .populate('department', 'name code')
-        .limit(3);
+      const { items } = await queryPage({
+        index: 'GSI1',
+        pk: typePartition('DOCTOR'),
+        filter: (d) => d.status === 'active',
+        limit: 3,
+      });
+      doctors = items.map((i) => doctorRepo.fromItem(i));
     }
+    await populate(doctors, 'department', departmentRepo, ['name', 'code']);
 
     res.status(200).json({
       success: true,
@@ -48,7 +61,10 @@ export const analyzeSymptoms = async (req: AuthRequest, res: Response, next: Nex
 
 export const getInventoryForecast = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const medicines = await Medicine.find().sort({ quantity: 1 });
+    // Medicine catalog (small, GSI1 TYPE#MED), sorted by quantity ascending in memory.
+    const medicines = (await queryAll({ index: 'GSI1', pk: typePartition('MED') }))
+      .map((i) => medicineRepo.fromItem(i))
+      .sort((a, b) => a.quantity - b.quantity);
     const predictions = medicines.map((m) =>
       predictInventoryStatus(m.medicineId, m.name, m.quantity, m.minStockLevel, m.dailyAvgUsage)
     );
@@ -74,9 +90,11 @@ export const getInventoryForecast = async (req: AuthRequest, res: Response, next
 
 export const getBedOccupancyForecast = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const totalBeds = await Bed.countDocuments();
-    const occupied = await Bed.countDocuments({ status: 'occupied' });
-    const available = await Bed.countDocuments({ status: 'available' });
+    // Beds are a small catalog: one query, counted in memory.
+    const beds = await queryAll({ index: 'GSI1', pk: typePartition('BED') });
+    const totalBeds = beds.length;
+    const occupied = beds.filter((b) => b.status === 'occupied').length;
+    const available = beds.filter((b) => b.status === 'available').length;
     const rate = totalBeds > 0 ? (occupied / totalBeds) * 100 : 0;
 
     let predictionText = 'Normal hospital intake capacity expected.';

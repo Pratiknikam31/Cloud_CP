@@ -1,9 +1,9 @@
 import request from 'supertest';
 import { setupTestTable, teardownTestTable } from './helpers/dynamoLocal';
 import { makeDepartment, makeDoctor, makePatient, makeUser } from './helpers/factory';
-import type { Express } from 'express';
+import type { Application } from 'express';
 
-let app: Express;
+let app: Application;
 let table: string;
 
 beforeAll(async () => {
@@ -84,6 +84,38 @@ describe('appointment booking', () => {
       .set('Authorization', `Bearer ${staffToken}`)
       .send({ status: 'confirmed' });
     expect(revive.status).toBe(409);
+  });
+
+  it('lists hospital-wide appointments for staff (with and without date filters) and stats', async () => {
+    const dept = await makeDepartment('Derm D', 'DERMD');
+    const { doctor } = await makeDoctor(dept._id, 'Dr. Skin');
+    const { token: patientToken } = await makePatient('Staff List Patient');
+    const { token: staffToken } = await makeUser('receptionist');
+    const booked = await request(app)
+      .post('/api/appointments')
+      .set('Authorization', `Bearer ${patientToken}`)
+      .send({ doctor: doctor._id, department: dept._id, date: '2030-04-02', timeSlot: '02:00 PM', symptoms: 'Rash on arm' });
+    expect(booked.status).toBe(201);
+
+    const all = await request(app).get('/api/appointments?limit=50').set('Authorization', `Bearer ${staffToken}`);
+    expect(all.status).toBe(200);
+    expect(all.body.appointments.some((a: any) => a._id === booked.body.appointment._id)).toBe(true);
+
+    const onDay = await request(app).get('/api/appointments?date=2030-04-02').set('Authorization', `Bearer ${staffToken}`);
+    expect(onDay.status).toBe(200);
+    expect(onDay.body.appointments.map((a: any) => a._id)).toEqual([booked.body.appointment._id]);
+
+    const toOnly = await request(app).get('/api/appointments?dateTo=2030-04-03').set('Authorization', `Bearer ${staffToken}`);
+    expect(toOnly.status).toBe(200);
+    expect(toOnly.body.appointments.some((a: any) => a._id === booked.body.appointment._id)).toBe(true);
+
+    const byDept = await request(app).get(`/api/appointments?department=${dept._id}&status=pending`).set('Authorization', `Bearer ${staffToken}`);
+    expect(byDept.status).toBe(200);
+    expect(byDept.body.appointments).toHaveLength(1);
+
+    const stats = await request(app).get('/api/appointments/stats').set('Authorization', `Bearer ${staffToken}`);
+    expect(stats.status).toBe(200);
+    expect(stats.body.stats).toEqual(expect.objectContaining({ todayTotal: expect.any(Number), weekTotal: expect.any(Number), monthTotal: expect.any(Number) }));
   });
 
   it('returns 400 (not 500) for invalid input and 404 for unknown ids', async () => {

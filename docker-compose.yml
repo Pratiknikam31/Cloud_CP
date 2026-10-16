@@ -1,35 +1,29 @@
-version: '3.8'
+# Optional local container setup (not used by Vercel).
+# The backend reads its configuration, including AWS settings, from backend/.env.
+# No secrets are stored in this file.
+#
+#   docker compose up --build                          -> uses the real DynamoDB table from backend/.env
+#   docker compose --profile local-db up --build       -> also starts DynamoDB Local on :8000
+#     (then set DYNAMODB_ENDPOINT=http://dynamodb-local:8000 in backend/.env)
+#
+# Note: AWS SSO/profile credentials from your machine are not available inside the
+# container; use DynamoDB Local or restricted access keys in backend/.env here.
 
 services:
-  mongodb:
-    image: mongo:7.0
-    container_name: cloudcare-mongodb
-    restart: always
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_DATABASE: smarthospital
-    volumes:
-      - mongo-data:/data/db
-    networks:
-      - cloudcare-network
-
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: cloudcare-backend
-    restart: always
+    restart: unless-stopped
     ports:
       - "5000:5000"
+    env_file:
+      - ./backend/.env
     environment:
       PORT: 5000
       NODE_ENV: production
       CLIENT_URL: http://localhost:5173
-      MONGODB_URI: mongodb://mongodb:27017/smarthospital
-      JWT_SECRET: smarthospital_jwt_super_secret_key_2026_production_ready
-    depends_on:
-      - mongodb
     networks:
       - cloudcare-network
 
@@ -38,7 +32,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: cloudcare-frontend
-    restart: always
+    restart: unless-stopped
     ports:
       - "5173:80"
     depends_on:
@@ -46,8 +40,15 @@ services:
     networks:
       - cloudcare-network
 
-volumes:
-  mongo-data:
+  dynamodb-local:
+    image: amazon/dynamodb-local:2.5.4
+    profiles: ["local-db"]
+    container_name: cloudcare-dynamodb-local
+    command: ["-jar", "DynamoDBLocal.jar", "-inMemory", "-sharedDb"]
+    ports:
+      - "8000:8000"
+    networks:
+      - cloudcare-network
 
 networks:
   cloudcare-network:

@@ -1,33 +1,52 @@
 import { Response, NextFunction } from 'express';
+import { randomUUID } from 'crypto';
 import { AuthRequest } from '../middleware/auth';
-import { Department } from '../models/Department';
+import { departmentRepo } from '../repositories';
+import { Item, queryPage } from '../db/dynamo';
+import { changeUnique, claimUnique, releaseUnique, typePartition } from '../db/keys';
+import { IDepartment } from '../types/entities';
 import { createDepartmentSchema, updateDepartmentSchema } from '../validators/schemas';
 import { logAudit } from '../utils/auditLogger';
+import { paginationMeta, parseCursor, parseLimit, queryString } from '../utils/pagination';
+import { ConflictError } from '../utils/errors';
+import { definedFields, isTakenByOther } from '../services/identityService';
+
+// Department names and codes are unique. DynamoDB has no unique indexes, so
+// each department owns two guard items (UNIQUE#DEPTNAME#<name>, UNIQUE#DEPTCODE#<code>)
+// written in the same transaction as the department. Two requests creating the
+// same name/code at the same time cannot both succeed. Guards are case-insensitive.
+const DEPT_EXISTS = 'Department name or code already exists';
+
+// After a cancelled transaction: is the name or code held by another department?
+const nameOrCodeTaken = async (name: string | undefined, code: string | undefined, selfId: string) =>
+  (await isTakenByOther('DEPTNAME', name, selfId)) || (await isTakenByOther('DEPTCODE', code, selfId));
 
 export const getDepartments = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const { search, status, page = '1', limit = '50' } = req.query;
-    const filter: any = {};
-    if (search) {
-      filter.$or = [
-        { name: { $regex: String(search), $options: 'i' } },
-        { code: { $regex: String(search), $options: 'i' } },
-      ];
-    }
-    if (status) filter.status = status;
+    const search = queryString(req.query.search)?.toLowerCase();
+    const status = queryString(req.query.status);
+    const limit = parseLimit(req.query.limit, 50, 100);
+    const cursor = parseCursor(req.query.cursor);
 
-    const pageNum = Math.max(1, parseInt(String(page)));
-    const limitNum = Math.min(100, Math.max(1, parseInt(String(limit))));
+    // Departments are a small catalog on GSI1 (TYPE#DEPT) sorted by name, so the
+    // original "name or code contains" search is done in memory on that partition.
+    const matches = (d: Item) =>
+      (!search || String(d.name).toLowerCase().includes(search) || String(d.code).toLowerCase().includes(search)) &&
+      (!status || d.status === status);
 
-    const [departments, total] = await Promise.all([
-      Department.find(filter).sort('name').skip((pageNum - 1) * limitNum).limit(limitNum),
-      Department.countDocuments(filter),
-    ]);
+    const { items, nextCursor } = await queryPage({
+      index: 'GSI1',
+      pk: typePartition('DEPT'),
+      limit,
+      cursor,
+      filter: search || status ? matches : undefined,
+    });
+    const departments = items.map((i) => departmentRepo.fromItem(i));
 
     return res.json({
       success: true,
       departments,
-      pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) },
+      pagination: paginationMeta(limit, departments.length, nextCursor),
     });
   } catch (error) {
     next(error);
@@ -36,7 +55,7 @@ export const getDepartments = async (req: AuthRequest, res: Response, next: Next
 
 export const getDepartmentById = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const department = await Department.findById(req.params.id);
+    const department = await departmentRepo.get(req.params.id);
     if (!department) return res.status(404).json({ success: false, message: 'Department not found' });
     return res.json({ success: true, department });
   } catch (error) {
@@ -47,14 +66,28 @@ export const getDepartmentById = async (req: AuthRequest, res: Response, next: N
 export const createDepartment = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = createDepartmentSchema.parse(req.body);
-    const existing = await Department.findOne({ $or: [{ name: data.name }, { code: data.code.toUpperCase() }] });
-    if (existing) return res.status(400).json({ success: false, message: 'Department name or code already exists' });
+    const name = data.name.trim();
+    const code = data.code.trim().toUpperCase();
 
-    const department = await Department.create({ ...data, code: data.code.toUpperCase() });
+    const id = randomUUID();
+
+    // Department + both uniqueness guards atomically.
+    let department: IDepartment;
+    try {
+      department = await departmentRepo.create(
+        { _id: id, name, code, description: data.description, icon: data.icon ?? 'Stethoscope', status: 'active' },
+        { extra: [claimUnique('DEPTNAME', name, id, DEPT_EXISTS), claimUnique('DEPTCODE', code, id, DEPT_EXISTS)] }
+      );
+    } catch (err) {
+      if (err instanceof ConflictError && (err.message === DEPT_EXISTS || (await nameOrCodeTaken(name, code, id)))) {
+        return res.status(400).json({ success: false, message: DEPT_EXISTS });
+      }
+      throw err;
+    }
 
     await logAudit({
       user: req.user, action: 'DEPARTMENT_CREATED', entity: 'Department',
-      entityId: department._id.toString(), description: `Department ${data.name} created`,
+      entityId: department._id, description: `Department ${name} created`,
       ipAddress: req.ip,
     });
 
@@ -67,12 +100,31 @@ export const createDepartment = async (req: AuthRequest, res: Response, next: Ne
 export const updateDepartment = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const data = updateDepartmentSchema.parse(req.body);
-    const department = await Department.findByIdAndUpdate(req.params.id, data, { new: true, runValidators: true });
+    const patch: Partial<IDepartment> = definedFields(data) as Partial<IDepartment>;
+    if (data.name) patch.name = data.name.trim();
+    if (data.code) patch.code = data.code.trim().toUpperCase();
+
+    let department: IDepartment | null;
+    try {
+      // A rename releases the old guard and claims the new one in the same
+      // transaction as the (versioned) department write.
+      department = await departmentRepo.update(req.params.id, () => patch, {
+        extra: (current, next) => [
+          ...changeUnique('DEPTNAME', current.name, next.name, current._id, DEPT_EXISTS),
+          ...changeUnique('DEPTCODE', current.code, next.code, current._id, DEPT_EXISTS),
+        ],
+      });
+    } catch (err) {
+      if (err instanceof ConflictError && (err.message === DEPT_EXISTS || (await nameOrCodeTaken(patch.name, patch.code, req.params.id)))) {
+        return res.status(400).json({ success: false, message: DEPT_EXISTS });
+      }
+      throw err;
+    }
     if (!department) return res.status(404).json({ success: false, message: 'Department not found' });
 
     await logAudit({
       user: req.user, action: 'DEPARTMENT_UPDATED', entity: 'Department',
-      entityId: department._id.toString(), description: `Department ${department.name} updated`,
+      entityId: department._id, description: `Department ${department.name} updated`,
       ipAddress: req.ip,
     });
 
@@ -84,12 +136,15 @@ export const updateDepartment = async (req: AuthRequest, res: Response, next: Ne
 
 export const deleteDepartment = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const department = await Department.findByIdAndDelete(req.params.id);
+    // Delete the department and free its name/code for reuse.
+    const department = await departmentRepo.remove(req.params.id, {
+      extra: (current) => [releaseUnique('DEPTNAME', current.name), releaseUnique('DEPTCODE', current.code)],
+    });
     if (!department) return res.status(404).json({ success: false, message: 'Department not found' });
 
     await logAudit({
       user: req.user, action: 'DEPARTMENT_DELETED', entity: 'Department',
-      entityId: department._id.toString(), description: `Department ${department.name} deleted`,
+      entityId: department._id, description: `Department ${department.name} deleted`,
       ipAddress: req.ip,
     });
 

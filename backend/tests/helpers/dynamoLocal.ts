@@ -26,6 +26,12 @@ export const isDynamoLocalAvailable = async (): Promise<boolean> => {
 };
 
 export const setupTestTable = async (): Promise<string> => {
+  if (!(await isDynamoLocalAvailable())) {
+    throw new Error(
+      `DynamoDB Local is not reachable at ${LOCAL_ENDPOINT}. Start it first, e.g. ` +
+        '"docker run -p 8000:8000 amazon/dynamodb-local" (see SETUP.md, section E).'
+    );
+  }
   const tableName = `HospitalData-test-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
   process.env.AWS_REGION = 'us-east-1';
   process.env.DYNAMODB_ENDPOINT = LOCAL_ENDPOINT;
