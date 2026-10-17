@@ -14,6 +14,7 @@ const awsErrorMessage = (err: any): string | undefined => {
     case 'UnrecognizedClientException':
       return 'The server is not allowed to access the database. Check the IAM permissions (see SETUP.md).';
     case 'CredentialsProviderError':
+    case 'VercelOidcTokenError': // AWS_ROLE_ARN set but no Vercel OIDC token (OIDC not enabled, or running outside Vercel)
     case 'ExpiredTokenException':
     case 'InvalidSignatureException':
       return 'The server could not obtain valid AWS credentials (see SETUP.md).';

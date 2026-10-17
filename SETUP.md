@@ -513,7 +513,7 @@ git status --ignored
 3. **Root Directory:** click **Edit** and choose **`backend`**.
 4. **Framework Preset:** Vercel detects **Express**. If it shows "Other", that is fine.
    - Vercel finds `src/app.ts`, which default-exports the Express app, and runs the whole app as a single function. No `vercel.json` is needed in `backend/`.
-   - Leave **Build Command** and **Output Directory** at their defaults. Vercel runs the existing `npm run build` (`tsc`) as a type-check.
+   - Leave **Build Command** and **Output Directory** at their defaults. Vercel bundles `src/app.ts` itself. If the build log shows the project's `npm run build` (`tsc`) running, it also type-checks, and a TypeScript error fails the deployment.
 5. **Environment Variables:** add the following before the first deploy. Use the **Production** environment, and mark `JWT_SECRET` as Sensitive.
 
    | Name | Value |
@@ -643,6 +643,7 @@ Tick each item. "Local" means `npm run dev` in both apps; "Prod" means the Verce
 | Table exists but the indexes are missing or `CREATING` | Wait until all three GSIs are **Active**. If you named them differently, recreate them exactly as `GSI1`–`GSI3` with `GSI1PK`/`GSI1SK` and so on. |
 | `The server is not allowed to access the database` / `AccessDeniedException` | **Missing IAM permissions.** The policy isn't attached, has the wrong ARN or region, or lacks the `/index/*` statement. See C4. |
 | `could not obtain valid AWS credentials`, `ExpiredTokenException`, `CredentialsProviderError` | **Invalid or expired credentials.** Locally, run `aws sso login --profile hospital-dev` again, or check the keys in `.env`. On Vercel, check that `AWS_ROLE_ARN` is set, OIDC is enabled in project **Settings, Security**, and the trust policy `sub` matches `owner:TEAM:project:PROJECT:environment:production`. |
+| Runtime log shows `VercelOidcTokenError: The 'x-vercel-oidc-token' header is missing` | `AWS_ROLE_ARN` is set but OIDC federation is not enabled for the backend project (Settings → Security), or you set `AWS_ROLE_ARN` in your **local** `.env`. Enable OIDC and redeploy; locally, remove `AWS_ROLE_ARN` and use `AWS_PROFILE` or keys. |
 | `Missing required environment variable JWT_SECRET` / `AWS_REGION`, or 500 "Server configuration error" | **Vercel environment variables are missing**, or were added without a redeploy. Add them and redeploy. |
 | API returns 404 for every route | The frontend calls the wrong URL. `VITE_API_URL` must end in `/api` and point to the **backend** project; redeploy the frontend after changing it. On the backend project, make sure Root Directory = `backend`. |
 | The frontend refresh on `/admin/...` shows Vercel 404 | Root Directory of the frontend project is not `frontend`, so `frontend/vercel.json` isn't used. |
