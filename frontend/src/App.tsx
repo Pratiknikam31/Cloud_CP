@@ -20,6 +20,7 @@ import { PharmacyDashboard } from './pages/dashboards/PharmacyDashboard';
 // Feature Pages
 import { SymptomChecker } from './pages/ai/SymptomChecker';
 import { AppointmentBooking } from './pages/appointments/AppointmentBooking';
+import { MyAppointments } from './pages/appointments/MyAppointments';
 import { EMRConsultation } from './pages/emr/EMRConsultation';
 import { InventoryManager } from './pages/pharmacy/InventoryManager';
 import { BedManager } from './pages/beds/BedManager';
@@ -90,7 +91,7 @@ export const App: React.FC = () => {
               <Route path="/patient/dashboard" element={<PatientDashboard />} />
               <Route path="/patient/ai-recommendation" element={<SymptomChecker />} />
               <Route path="/patient/book-appointment" element={<AppointmentBooking />} />
-              <Route path="/patient/appointments" element={<AppointmentBooking />} />
+              <Route path="/patient/appointments" element={<MyAppointments />} />
               <Route path="/patient/medical-records" element={<EMRConsultation />} />
               <Route path="/patient/prescriptions" element={<EMRConsultation />} />
               <Route path="/patient/lab-reports" element={<LabDashboard />} />

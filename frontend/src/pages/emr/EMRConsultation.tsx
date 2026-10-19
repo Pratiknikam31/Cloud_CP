@@ -17,6 +17,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { patientApi, emrApi, doctorApi } from '../../api/hospitalApi';
+import { getMeApi } from '../../api/authApi';
 import { useAuth } from '../../context/AuthContext';
 
 export const EMRConsultation: React.FC = () => {
@@ -60,8 +61,13 @@ export const EMRConsultation: React.FC = () => {
   useEffect(() => {
     const init = async () => {
       try {
+        // Patients may not list the patient directory (403), so a patient
+        // loads only their own profile from /auth/me.
+        const isPatient = user?.role === 'patient';
         const [patRes, docRes] = await Promise.all([
-          patientApi.getAll(),
+          isPatient
+            ? getMeApi().then((me) => ({ patients: me.profile ? [me.profile] : [] }))
+            : patientApi.getAll(),
           doctorApi.getAll()
         ]);
 
@@ -86,7 +92,7 @@ export const EMRConsultation: React.FC = () => {
       }
     };
     init();
-  }, [searchParams]);
+  }, [searchParams, user?.role]);
 
   // Load existing records when patient changes
   useEffect(() => {
