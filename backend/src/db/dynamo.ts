@@ -2,6 +2,7 @@ import {
   BatchGetCommand,
   GetCommand,
   PutCommand,
+  DeleteCommand,
   QueryCommand,
   QueryCommandInput,
   TransactWriteCommand,
@@ -48,6 +49,10 @@ export const putItem = async (item: Item, conflictMessage?: string, condition?: 
     if (err?.name === 'ConditionalCheckFailedException') throw new ConflictError(conflictMessage);
     throw err;
   }
+};
+
+export const deleteItem = async (PK: string, SK: string): Promise<void> => {
+  await client().send(new DeleteCommand({ TableName: tableName(), Key: { PK, SK } }));
 };
 
 // Fetch many items by key. BatchGetItem accepts at most 100 keys per call and may

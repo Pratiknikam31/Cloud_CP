@@ -8,13 +8,14 @@ import { createUserAccount, EMAIL_TAKEN, findUserByEmail } from '../repositories
 import { findDoctorByUser, findPatientByUser } from '../repositories/profiles';
 import { populate } from '../db/populate';
 import { STATS, statsAdd } from '../db/keys';
-import { nowIso, TxOp } from '../db/dynamo';
+import { nowIso, TxOp, getItem, putItem, deleteItem } from '../db/dynamo';
 import { newPatientId } from '../utils/ids';
 import { ConflictError } from '../utils/errors';
 import { env } from '../config/env';
-import { registerSchema, loginSchema, changePasswordSchema } from '../validators/authValidator';
+import { registerSchema, loginSchema, changePasswordSchema, sendOtpSchema } from '../validators/authValidator';
 import { AuthRequest } from '../middleware/auth';
 import { logAudit } from '../utils/auditLogger';
+import { sendOtpEmail } from '../services/emailService';
 
 const generateToken = (user: IUser): string => {
   return jwt.sign(
@@ -29,11 +30,59 @@ const generateToken = (user: IUser): string => {
   );
 };
 
+export const sendRegistrationOtp = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email } = sendOtpSchema.parse(req.body);
+    const cleanEmail = email.trim().toLowerCase();
+
+    const existingUser = await findUserByEmail(cleanEmail);
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'An account with this email already exists. Please sign in.' });
+    }
+
+    // Generate secure 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Store in DynamoDB (valid for 10 minutes)
+    await putItem({
+      PK: `OTP#${cleanEmail}`,
+      SK: 'REGISTRATION',
+      otp,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+      createdAt: nowIso(),
+      entityType: 'OTP',
+    });
+
+    const sendResult = await sendOtpEmail(cleanEmail, otp);
+
+    return res.status(200).json({
+      success: true,
+      message: sendResult.message,
+      devOtp: env.nodeEnv() === 'development' ? sendResult.devOtp : undefined,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const validatedData = registerSchema.parse(req.body);
+    const cleanEmail = validatedData.email.trim().toLowerCase();
 
-    const existingUser = await findUserByEmail(validatedData.email);
+    // Verify OTP first
+    const otpRecord = await getItem(`OTP#${cleanEmail}`, 'REGISTRATION');
+    if (!otpRecord) {
+      return res.status(400).json({ success: false, message: 'Please request a verification code for this email first.' });
+    }
+    if (Date.now() > otpRecord.expiresAt) {
+      return res.status(400).json({ success: false, message: 'Verification code has expired. Please request a new one.' });
+    }
+    if (otpRecord.otp !== validatedData.otp.trim()) {
+      return res.status(400).json({ success: false, message: 'Invalid verification code. Please check the code and try again.' });
+    }
+
+    const existingUser = await findUserByEmail(cleanEmail);
     if (existingUser) {
       return res.status(400).json({ success: false, message: EMAIL_TAKEN });
     }
@@ -101,6 +150,9 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       description: `New user account created with role ${user.role}`,
       ipAddress: req.ip
     });
+
+    // Clean up consumed OTP
+    await deleteItem(`OTP#${cleanEmail}`, 'REGISTRATION').catch(() => {});
 
     return res.status(201).json({
       success: true,

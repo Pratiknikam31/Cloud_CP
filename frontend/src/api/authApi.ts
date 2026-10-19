@@ -1,6 +1,11 @@
 import api from './client';
 import { User } from '../types';
 
+export const sendOtpApi = async (email: string) => {
+  const res = await api.post('/auth/send-otp', { email });
+  return res.data;
+};
+
 export const registerApi = async (data: any) => {
   const res = await api.post('/auth/register', data);
   return res.data;

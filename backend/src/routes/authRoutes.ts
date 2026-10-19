@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import { register, login, getMe, updateProfile, changePassword } from '../controllers/authController';
+import { register, login, getMe, updateProfile, changePassword, sendRegistrationOtp } from '../controllers/authController';
 import { authenticateJWT } from '../middleware/auth';
 
 const router = Router();
 
+router.post('/send-otp', sendRegistrationOtp);
 router.post('/register', register);
 router.post('/login', login);
 router.get('/me', authenticateJWT, getMe);

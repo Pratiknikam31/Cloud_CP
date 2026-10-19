@@ -109,6 +109,17 @@ export const PatientDashboard: React.FC = () => {
         </Link>
 
         <Link
+          to="/patient/appointments"
+          className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition group"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <Calendar className="w-6 h-6" />
+          </div>
+          <h3 className="font-bold text-slate-900 text-lg">My Appointments</h3>
+          <p className="text-slate-500 text-xs mt-1">View all appointment history</p>
+        </Link>
+
+        <Link
           to="/patient/medical-records"
           className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition group"
         >
@@ -139,6 +150,17 @@ export const PatientDashboard: React.FC = () => {
           </div>
           <h3 className="font-bold text-slate-900 text-lg">Lab Reports</h3>
           <p className="text-slate-500 text-xs mt-1">{labReports.length} Diagnostics & blood tests</p>
+        </Link>
+
+        <Link
+          to="/patient/bills"
+          className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition group"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <Receipt className="w-6 h-6" />
+          </div>
+          <h3 className="font-bold text-slate-900 text-lg">My Bills</h3>
+          <p className="text-slate-500 text-xs mt-1">{bills.length} Invoices & payments</p>
         </Link>
       </div>
 

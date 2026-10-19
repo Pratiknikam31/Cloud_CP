@@ -1,5 +1,6 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { SESClient } from '@aws-sdk/client-ses';
 import { awsCredentialsProvider } from '@vercel/oidc-aws-credentials-provider';
 import { env } from './env';
 
@@ -20,6 +21,7 @@ const resolveCredentials = () => {
 };
 
 let documentClient: DynamoDBDocumentClient | undefined;
+let sesClient: SESClient | undefined;
 
 // The client is created once per function instance and reused across requests.
 export const getDocumentClient = (): DynamoDBDocumentClient => {
@@ -37,7 +39,20 @@ export const getDocumentClient = (): DynamoDBDocumentClient => {
   return documentClient;
 };
 
+export const getSESClient = (): SESClient => {
+  if (!sesClient) {
+    sesClient = new SESClient({
+      region: env.awsRegion(),
+      credentials: resolveCredentials(),
+      maxAttempts: 3,
+    });
+  }
+  return sesClient;
+};
+
 // Test helper: forget the cached client (e.g. after changing env vars).
 export const resetDocumentClient = () => {
   documentClient = undefined;
+  sesClient = undefined;
 };
+

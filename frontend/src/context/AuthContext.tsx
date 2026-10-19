@@ -58,10 +58,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const register = async (data: any): Promise<User> => {
     const res = await registerApi(data);
     if (res.success) {
-      setToken(res.token);
-      setUser(res.user);
-      localStorage.setItem('smarthospital_token', res.token);
-      localStorage.setItem('smarthospital_user', JSON.stringify(res.user));
       return res.user;
     }
     throw new Error(res.message || 'Registration failed');

@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+export const sendOtpSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
 export const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
@@ -15,6 +19,7 @@ export const registerSchema = z.object({
     'patient'
   ]).optional().default('patient'),
   phone: z.string().optional(),
+  otp: z.string().min(4, 'A valid OTP verification code is required'),
 });
 
 export const loginSchema = z.object({

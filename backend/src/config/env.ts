@@ -42,6 +42,11 @@ export const env = {
   dynamoEndpoint: () => read('DYNAMODB_ENDPOINT'),
   // Optional: IAM role assumed through Vercel OIDC federation (production on Vercel).
   awsRoleArn: () => read('AWS_ROLE_ARN'),
+  // AWS SES Sender email
+  sesFromEmail: () => read('SES_FROM_EMAIL') || 'noreply@smarthospital.org',
+  // Gmail SMTP
+  smtpUser: () => read('SMTP_USER'),
+  smtpPass: () => read('SMTP_PASS'),
 };
 
 // Called once at local server start-up so misconfiguration fails fast with a clear message.
