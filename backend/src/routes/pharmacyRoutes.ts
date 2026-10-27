@@ -17,8 +17,9 @@ const router = Router();
 router.use(authenticateJWT);
 
 router.get('/medicines', getMedicines);
-router.get('/medicines/predictions', getInventoryPredictions);
+router.get('/medicines/predictions', authorizeRoles('admin', 'pharmacist'), getInventoryPredictions);
 router.get('/medicines/:id', getMedicineById);
+
 router.post('/medicines', authorizeRoles('admin', 'pharmacist'), createMedicine);
 router.put('/medicines/:id', authorizeRoles('admin', 'pharmacist'), updateMedicine);
 router.delete('/medicines/:id', authorizeRoles('admin'), deleteMedicine);

@@ -14,7 +14,7 @@ export const patientApi = {
 export const doctorApi = {
   getAll: (params?: any) => api.get('/doctors', { params }).then((res) => res.data),
   getById: (id: string) => api.get(`/doctors/${id}`).then((res) => res.data),
-  getSlots: (id: string) => api.get(`/doctors/${id}/slots`).then((res) => res.data),
+  getSlots: (id: string, params?: any) => api.get(`/doctors/${id}/slots`, { params }).then((res) => res.data),
   create: (data: any) => api.post('/doctors', data).then((res) => res.data),
   update: (id: string, data: any) => api.put(`/doctors/${id}`, data).then((res) => res.data),
   delete: (id: string) => api.delete(`/doctors/${id}`).then((res) => res.data),
@@ -129,4 +129,20 @@ export const aiApi = {
 export const analyticsApi = {
   getOverview: () => api.get('/analytics/overview').then((res) => res.data),
   search: (q: string) => api.get('/analytics/search', { params: { q } }).then((res) => res.data),
+};
+
+// ==================== NURSE ====================
+export const nurseApi = {
+  getDashboard: () => api.get('/nurse/dashboard').then((res) => res.data),
+  getTasks: (params?: any) => api.get('/nurse/tasks', { params }).then((res) => res.data),
+  createTask: (data: any) => api.post('/nurse/tasks', data).then((res) => res.data),
+  updateTask: (id: string, data: any) => api.patch(`/nurse/tasks/${id}`, data).then((res) => res.data),
+};
+
+// ==================== USERS (ADMIN) ====================
+export const userApi = {
+  getAll: (params?: any) => api.get('/users', { params }).then((res) => res.data),
+  create: (data: any) => api.post('/users', data).then((res) => res.data),
+  updateRole: (id: string, role: string) => api.patch(`/users/${id}/role`, { role }).then((res) => res.data),
+  updateStatus: (id: string, isActive: boolean) => api.patch(`/users/${id}/status`, { isActive }).then((res) => res.data),
 };

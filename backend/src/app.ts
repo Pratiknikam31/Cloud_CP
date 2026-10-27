@@ -20,6 +20,8 @@ import notificationRoutes from './routes/notificationRoutes';
 import auditRoutes from './routes/auditRoutes';
 import aiRoutes from './routes/aiRoutes';
 import analyticsRoutes from './routes/analyticsRoutes';
+import userRoutes from './routes/userRoutes';
+import nurseRoutes from './routes/nurseRoutes';
 
 const app: Application = express();
 
@@ -50,6 +52,8 @@ if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/nurse', nurseRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/departments', departmentRoutes);
@@ -63,6 +67,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/audit-logs', auditRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/analytics', analyticsRoutes);
+
 
 // Health check endpoint.
 // GET /api/health?db=1 also performs one DynamoDB GetItem to verify region,

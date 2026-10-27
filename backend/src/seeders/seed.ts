@@ -21,7 +21,7 @@ import {
 } from '../repositories';
 import { createUserAccount, findUserByEmail } from '../repositories/userAccounts';
 import { nowIso, transactWrite, tx, TxOp } from '../db/dynamo';
-import { claimUnique, slotLockKey, STATS, statsAdd } from '../db/keys';
+import { claimUnique, patientSlotLockKey, slotLockKey, STATS, statsAdd } from '../db/keys';
 import { env } from '../config/env';
 import { logAudit } from '../utils/auditLogger';
 import { localDayKey } from '../utils/dates';
@@ -111,6 +111,7 @@ const createAppointment = async (data: {
   await transactWrite([
     ...ops,
     tx.putUnique({ ...lock, entityType: 'SLOT', appointmentId: entity._id }, SLOT_TAKEN),
+    tx.putUnique({ ...patientSlotLockKey(data.patient._id, dayKey, data.timeSlot), entityType: 'PATIENT_SLOT', appointmentId: entity._id }, SLOT_TAKEN),
     statsAdd(STATS.totals, { appointments: 1 }),
     statsAdd(STATS.appointmentsByDepartment(entity.department), { count: 1 }),
   ]);
@@ -182,8 +183,8 @@ export const seed = async (): Promise<void> => {
   };
   const deptCardiology = await createDepartment('Cardiology', 'CARD', 'Comprehensive cardiovascular diagnosis, intervention, and outpatient care.', 'Heart');
   const deptNeurology = await createDepartment('Neurology', 'NEUR', 'Brain, spinal cord, and peripheral nerve disorders.', 'Brain');
-  await createDepartment('Orthopedics', 'ORTH', 'Joint replacement, trauma, and musculoskeletal care.', 'Bone');
-  await createDepartment('Pediatrics', 'PED', 'Child health, immunization, and neonatal intensive care.', 'Baby');
+  const deptOrthopedics = await createDepartment('Orthopedics', 'ORTH', 'Joint replacement, trauma, and musculoskeletal care.', 'Bone');
+  const deptPediatrics = await createDepartment('Pediatrics', 'PED', 'Child health, immunization, and neonatal intensive care.', 'Baby');
   console.log('🏥 Seeded 4 Clinical Departments.\n');
 
   // 3. Doctors: user account + doctor profile in one transaction.
@@ -236,7 +237,35 @@ export const seed = async (): Promise<void> => {
       bio: 'Expert in migraine syndromes, neurodegenerative conditions, and epilepsy management.',
     }
   );
-  console.log('🩺 Seeded Doctors.\n');
+  const { doctor: doc3 } = await createDoctorAccount(
+    { name: 'Dr. Sarah Mitchell', email: 'mitchell@smarthospital.org', phone: '+1 555-010-9015' },
+    {
+      specialization: 'Orthopedic Surgery',
+      department: deptOrthopedics._id,
+      qualification: 'MD, FAOA, Stanford School of Medicine',
+      experienceYears: 18,
+      consultationFee: 160,
+      availableDays: ['Monday', 'Tuesday', 'Thursday', 'Friday'],
+      availableTimeSlots: [{ start: '09:00', end: '13:00' }, { start: '14:30', end: '17:30' }],
+      roomNumber: 'R-310',
+      bio: 'Specializes in joint replacement, sports medicine, and trauma surgery.',
+    }
+  );
+  const { doctor: doc4 } = await createDoctorAccount(
+    { name: 'Dr. James Wilson', email: 'wilson@smarthospital.org', phone: '+1 555-010-9016' },
+    {
+      specialization: 'Pediatrics',
+      department: deptPediatrics._id,
+      qualification: 'MD, FAAP, Yale School of Medicine',
+      experienceYears: 10,
+      consultationFee: 120,
+      availableDays: ['Tuesday', 'Wednesday', 'Friday', 'Saturday'],
+      availableTimeSlots: [{ start: '08:00', end: '12:00' }, { start: '14:00', end: '17:00' }],
+      roomNumber: 'R-315',
+      bio: 'Expert in pediatric care, childhood development, and adolescent medicine.',
+    }
+  );
+  console.log('🩺 Seeded 4 Doctors.\n');
 
   // 4. Patients: user account + patient profile + STATS.totals.patients in one transaction.
   const createPatientAccount = async (
@@ -271,7 +300,7 @@ export const seed = async (): Promise<void> => {
       insuranceProvider: 'BlueCross HealthCare',
       insurancePolicyNumber: 'BC-984421-NY',
       allergies: ['Penicillin'],
-      medicalHistory: ['Hypertension', 'Mild Angina'],
+      medicalHistory: ['Mild Angina'],
     }
   );
   const { patient: pat2 } = await createPatientAccount(
@@ -307,7 +336,7 @@ export const seed = async (): Promise<void> => {
   const labUser = await makeUser(hashedPassword, { name: 'Michael Faraday', email: 'lab@smarthospital.org', role: 'lab_staff', phone: '+1 555-010-9004' });
   const pharmacyUser = await makeUser(hashedPassword, { name: 'Alexander Fleming', email: 'pharmacy@smarthospital.org', role: 'pharmacist', phone: '+1 555-010-9005' });
   await makeUser(hashedPassword, { name: 'Emma Watson', email: 'nurse@smarthospital.org', role: 'nurse', phone: '+1 555-010-9006' });
-  console.log('👥 Created 10 demo user accounts (including Nurse and Multiple Doctors/Patients).\n');
+  console.log('👥 Created 12 demo user accounts (including Nurse and Multiple Doctors/Patients).\n');
   console.log('🧑‍⚕️ Seeded Patients.\n');
 
   // 5. Appointments (queue numbers come from the per-doctor/day counter).
@@ -324,9 +353,14 @@ export const seed = async (): Promise<void> => {
     symptoms: 'Severe throbbing left-side migraine with photophobia',
   });
   await createAppointment({
-    patient: pat3, doctor: doc1, department: deptCardiology._id, date: new Date(Date.now() + DAY), timeSlot: '10:00',
+    patient: pat3, doctor: doc3, department: deptOrthopedics._id, date: new Date(Date.now() + DAY), timeSlot: '10:00',
     status: 'confirmed',
-    symptoms: 'Routine lipid profile review and cardiac checkup',
+    symptoms: 'Knee pain and limited mobility after sports injury',
+  });
+  await createAppointment({
+    patient: pat1, doctor: doc4, department: deptPediatrics._id, date: new Date(Date.now() + 2 * DAY), timeSlot: '14:00',
+    status: 'confirmed',
+    symptoms: 'Child routine checkup and vaccination',
   });
   console.log('📅 Seeded Appointments.\n');
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Clock, Stethoscope, RefreshCw, Plus, Hash, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, Stethoscope, RefreshCw, Plus, Hash, AlertCircle, X } from 'lucide-react';
 import { appointmentApi } from '../../api/hospitalApi';
 
 // Lists the appointments the logged-in patient has already booked.
@@ -17,6 +17,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 const ACTIVE = ['pending', 'confirmed', 'checked_in', 'in_consultation'];
+const CANCELLABLE = ['pending', 'confirmed'];
 
 const formatDate = (iso?: string) =>
   iso
@@ -30,6 +31,7 @@ export const MyAppointments: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const load = async (next?: string) => {
     try {
@@ -50,6 +52,22 @@ export const MyAppointments: React.FC = () => {
   useEffect(() => {
     load();
   }, []);
+
+  const handleCancel = async (appointmentId: string) => {
+    if (!confirm('Are you sure you want to cancel this appointment? This will free up the time slot for other patients.')) {
+      return;
+    }
+    setCancellingId(appointmentId);
+    try {
+      await appointmentApi.updateStatus(appointmentId, 'cancelled');
+      // Reload the appointments list
+      load();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to cancel appointment.');
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   const upcoming = appointments
     .filter((a) => ACTIVE.includes(a.status))
@@ -157,7 +175,24 @@ export const MyAppointments: React.FC = () => {
                   {a.symptoms}
                 </p>
               )}
-              <p className="text-[11px] text-slate-400">Ref: {a.appointmentId}</p>
+              
+              <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                <p className="text-[11px] text-slate-400">Ref: {a.appointmentId}</p>
+                {CANCELLABLE.includes(a.status) && (
+                  <button
+                    onClick={() => handleCancel(a._id)}
+                    disabled={cancellingId === a._id}
+                    className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 text-xs font-semibold hover:bg-rose-100 transition flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {cancellingId === a._id ? (
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <X className="w-3 h-3" />
+                    )}
+                    <span>{cancellingId === a._id ? 'Cancelling...' : 'Cancel'}</span>
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>

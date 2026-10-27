@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from './auth';
 import { UserRole } from '../types/entities';
+import { logAudit } from '../utils/auditLogger';
 
 // Role aliases: the routes authorize 'admin' and 'lab_technician', while the
 // seeded and registrable accounts use 'hospital_admin' / 'super_admin' and
@@ -22,6 +23,15 @@ export const authorizeRoles = (...allowedRoles: UserRole[]) => {
     }
 
     if (!allowed.includes(req.user.role)) {
+      logAudit({
+        user: req.user,
+        action: 'AUTHORIZATION_DENIED',
+        entity: 'AccessControl',
+        entityId: req.originalUrl,
+        description: `Access denied for role '${req.user.role}' on ${req.method} ${req.originalUrl}`,
+        ipAddress: req.ip,
+      }).catch(() => {});
+
       return res.status(403).json({
         success: false,
         message: `Forbidden: Role '${req.user.role}' does not have access to this resource`
@@ -31,3 +41,4 @@ export const authorizeRoles = (...allowedRoles: UserRole[]) => {
     next();
   };
 };
+

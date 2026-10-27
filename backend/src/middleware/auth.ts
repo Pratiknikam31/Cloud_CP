@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { UserRole } from '../types/entities';
 import { env } from '../config/env';
+import { userRepo } from '../repositories';
 
 export interface AuthUser {
   id: string;
@@ -15,7 +16,7 @@ export interface AuthRequest extends Request {
   user?: AuthUser;
 }
 
-export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authenticateJWT = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -32,10 +33,26 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
     try {
       const decoded = jwt.verify(token, secret) as any;
       const userId = decoded._id || decoded.id || '';
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Invalid token: user ID missing' });
+      }
+
+      // Re-verify against database: ensures user exists, account is active, and role is authoritative
+      const user = await userRepo.get(userId);
+      if (!user) {
+        return res.status(401).json({ success: false, message: 'User account not found' });
+      }
+      if (user.isActive === false) {
+        return res.status(403).json({ success: false, message: 'Account has been deactivated. Please contact an administrator.' });
+      }
+
       req.user = {
         ...decoded,
-        id: userId,
-        _id: userId
+        id: user._id,
+        _id: user._id,
+        role: user.role,
+        email: user.email,
+        name: user.name,
       };
       return next();
     } catch (err) {
@@ -47,3 +64,4 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
 };
 
 export { authorizeRoles } from './rbac';
+

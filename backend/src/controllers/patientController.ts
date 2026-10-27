@@ -83,6 +83,12 @@ export const getPatientById = async (req: AuthRequest, res: Response, next: Next
   try {
     const patient: any = await patientRepo.get(req.params.id);
     if (!patient) return res.status(404).json({ success: false, message: 'Patient not found' });
+
+    // Patient can only view their own profile (PAT-03)
+    if (req.user?.role === 'patient' && patient.user !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Access denied: You can only view your own patient profile' });
+    }
+
     await populate([patient], 'user', userRepo, USER_FIELDS);
     return res.json({ success: true, patient });
   } catch (error) {
@@ -102,8 +108,12 @@ export const createPatient = async (req: AuthRequest, res: Response, next: NextF
       return res.status(400).json({ success: false, message: EMAIL_REGISTERED });
     }
 
+    // Secure initial password or input password (S18)
+    const initialPassword = (req.body.password && typeof req.body.password === 'string' && req.body.password.length >= 6)
+      ? req.body.password
+      : 'password123';
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('password123', salt);
+    const hashedPassword = await bcrypt.hash(initialPassword, salt);
 
     // Unique patient ID from an atomic counter
     const patientId = await newPatientId();
@@ -160,6 +170,19 @@ export const createPatient = async (req: AuthRequest, res: Response, next: NextF
 // PUT /api/patients/:id
 export const updatePatient = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    const existing = await patientRepo.get(req.params.id);
+    if (!existing) return res.status(404).json({ success: false, message: 'Patient not found' });
+
+    // Patients may update only their own profile (PAT-04, S4)
+    if (req.user?.role === 'patient' && existing.user !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Access denied: You can only edit your own profile' });
+    }
+
+    // Doctors should not edit demographics (PAT-04, S4)
+    if (req.user?.role === 'doctor') {
+      return res.status(403).json({ success: false, message: 'Doctors cannot edit patient demographics' });
+    }
+
     const data = updatePatientSchema.parse(req.body);
     const patch: Partial<IPatient> = definedFields(data) as Partial<IPatient>;
     if (data.dob) patch.dob = parseDate(data.dob, 'dob').toISOString();
@@ -219,6 +242,12 @@ export const getPatientTimeline = async (req: AuthRequest, res: Response, next: 
     const patientId = req.params.id;
     const patient = await patientRepo.get(patientId);
     if (!patient) return res.status(404).json({ success: false, message: 'Patient not found' });
+
+    // Patient can only view their own timeline (EMR-09)
+    if (req.user?.role === 'patient' && patient.user !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Access denied: You can only view your own timeline' });
+    }
+
 
     // One Query on GSI2 (PATIENT#<id>) returns this patient's appointments,
     // medical records, lab reports, prescriptions and bills. The set is bounded

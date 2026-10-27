@@ -1,25 +1,43 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Activity, 
-  Stethoscope, 
-  Calendar, 
   BrainCircuit, 
-  ListOrdered, 
-  Package, 
-  BedDouble, 
-  FileText, 
   ShieldCheck, 
   ArrowRight, 
   CheckCircle2, 
-  Star, 
-  Building2, 
   HeartPulse, 
-  Microscope,
-  PhoneCall
+  Baby
 } from 'lucide-react';
+import { doctorApi } from '../api/hospitalApi';
 
 export const Landing: React.FC = () => {
+  const [specialistCounts, setSpecialistCounts] = useState<Record<string, number>>({
+    CARD: 1,
+    NEUR: 1,
+    ORTH: 1,
+    PED: 1,
+  });
+
+  useEffect(() => {
+    doctorApi.getAll()
+      .then((res: any) => {
+        const doctors = res.doctors || res.data?.doctors || [];
+        if (Array.isArray(doctors) && doctors.length > 0) {
+          const counts: Record<string, number> = { CARD: 0, NEUR: 0, ORTH: 0, PED: 0 };
+          doctors.forEach((doc: any) => {
+            const deptCode = doc.department?.code;
+            if (deptCode && deptCode in counts) {
+              counts[deptCode]++;
+            }
+          });
+          setSpecialistCounts((prev) => ({ ...prev, ...counts }));
+        }
+      })
+      .catch(() => {
+        // Keep initial fallback counts
+      });
+  }, []);
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-brand-500 selection:text-white">
       {/* Navigation Bar */}
@@ -36,11 +54,8 @@ export const Landing: React.FC = () => {
           </Link>
 
           <nav className="hidden md:flex items-center space-x-8 text-sm font-semibold text-slate-600">
-            <a href="#features" className="hover:text-brand-600 transition">Features</a>
             <a href="#departments" className="hover:text-brand-600 transition">Departments</a>
-            <a href="#smart-ai" className="hover:text-brand-600 transition">Smart AI</a>
             <a href="#security" className="hover:text-brand-600 transition">Security</a>
-            <a href="#testimonials" className="hover:text-brand-600 transition">Testimonials</a>
           </nav>
 
           <div className="flex items-center space-x-4">
@@ -80,7 +95,7 @@ export const Landing: React.FC = () => {
               </h1>
 
               <p className="text-lg sm:text-xl text-slate-600 font-normal leading-relaxed max-w-2xl">
-                An enterprise-grade SaaS platform uniting electronic medical records, symptom-assisted AI department routing, live digital queue management, and pharmacy inventory forecasting.
+                An enterprise-grade SaaS platform.
               </p>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
@@ -97,21 +112,6 @@ export const Landing: React.FC = () => {
                 >
                   <span>Patient Portal</span>
                 </Link>
-              </div>
-
-              <div className="pt-4 flex items-center space-x-6 text-slate-500 text-xs font-semibold">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span>8 Role-Based Access Controls</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span>HIPAA & GDPR Ready</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span>99.99% Cloud SLA</span>
-                </div>
               </div>
             </div>
 
@@ -164,131 +164,10 @@ export const Landing: React.FC = () => {
                       <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold">Token #102</span>
                     </div>
                   </div>
-
-                  {/* AI Symptom Routing Snippet */}
-                  <div className="p-3.5 rounded-2xl bg-gradient-to-r from-brand-950 to-slate-800 border border-brand-500/30 text-xs space-y-1.5">
-                    <div className="flex items-center justify-between text-brand-300 font-bold">
-                      <span className="flex items-center space-x-1">
-                        <BrainCircuit className="w-4 h-4" />
-                        <span>AI Symptom Assister</span>
-                      </span>
-                      <span className="text-[10px] bg-brand-500/20 px-2 py-0.5 rounded text-brand-300">95% Match</span>
-                    </div>
-                    <p className="text-slate-300 text-[11px]">
-                      "Chest tightness and dyspnea after exertion" → Recommended Department: <strong className="text-white">Cardiology</strong>
-                    </p>
-                  </div>
                 </div>
               </div>
             </div>
 
-          </div>
-        </div>
-      </section>
-
-      {/* Hospital Metrics & Statistics Banner */}
-      <section className="bg-slate-900 text-white py-12 border-y border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-              <p className="text-4xl sm:text-5xl font-extrabold text-brand-400 tracking-tight">50,000+</p>
-              <p className="text-slate-400 text-sm font-semibold mt-1">Patients Served</p>
-            </div>
-            <div>
-              <p className="text-4xl sm:text-5xl font-extrabold text-medical-teal tracking-tight">120+</p>
-              <p className="text-slate-400 text-sm font-semibold mt-1">Specialist Doctors</p>
-            </div>
-            <div>
-              <p className="text-4xl sm:text-5xl font-extrabold text-emerald-400 tracking-tight">99.8%</p>
-              <p className="text-slate-400 text-sm font-semibold mt-1">Prescription Accuracy</p>
-            </div>
-            <div>
-              <p className="text-4xl sm:text-5xl font-extrabold text-indigo-400 tracking-tight">24 / 7</p>
-              <p className="text-slate-400 text-sm font-semibold mt-1">Real-time Emergency Queue</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Core Features Grid */}
-      <section id="features" className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
-          <div className="text-center max-w-3xl mx-auto space-y-4">
-            <h2 className="text-xs font-bold text-brand-600 uppercase tracking-widest">Comprehensive Modules</h2>
-            <p className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-              Engineered for Complete Clinical & Administrative Excellence
-            </p>
-            <p className="text-slate-600 text-base">
-              Everything modern medical centers require, built into one cohesive cloud interface.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Feature 1 */}
-            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/80 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
-              <div className="w-12 h-12 rounded-2xl bg-brand-100 text-brand-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Stethoscope className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Electronic Medical Records</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
-                Complete longitudinal patient timelines, vital sign trends, clinical diagnosis notes, and past consultation history.
-              </p>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/80 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
-              <div className="w-12 h-12 rounded-2xl bg-teal-100 text-medical-teal flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <BrainCircuit className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">AI Department Recommendation</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
-                Smart natural language symptom evaluation routing patients to appropriate specialty departments instantly.
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/80 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Activity className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Smart Queue Orchestration</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
-                Real-time digital patient token queue, call-next patient actions, live wait-time forecasting, and check-in desk sync.
-              </p>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/80 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Package className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Pharmacy Stock Forecasting</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
-                Automated depletion prediction algorithms calculating remaining operational days and triggering low-stock reorder warnings.
-              </p>
-            </div>
-
-            {/* Feature 5 */}
-            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/80 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <BedDouble className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Visual Bed & Room Grid</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
-                Interactive floor-by-floor room grid showing real-time available, occupied, reserved, and maintenance status beds.
-              </p>
-            </div>
-
-            {/* Feature 6 */}
-            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200/80 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group">
-              <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <FileText className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">Billing & Invoice Generator</h3>
-              <p className="text-slate-600 text-sm leading-relaxed">
-                Itemized hospital charges for consultation, room, laboratory, and pharmacy with instant PDF receipt printing.
-              </p>
-            </div>
           </div>
         </div>
       </section>
@@ -301,18 +180,16 @@ export const Landing: React.FC = () => {
             <p className="text-3xl font-extrabold text-slate-900 mt-2">Clinical Departments</p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { name: 'Cardiology', code: 'CARD', count: '14 Specialists', icon: HeartPulse, color: 'text-rose-500 bg-rose-50' },
-              { name: 'Neurology', code: 'NEUR', count: '10 Specialists', icon: BrainCircuit, color: 'text-indigo-500 bg-indigo-50' },
-              { name: 'Orthopedics', code: 'ORTH', count: '12 Specialists', icon: Activity, color: 'text-emerald-500 bg-emerald-50' },
-              { name: 'Pediatrics', code: 'PED', count: '9 Specialists', icon: Stethoscope, color: 'text-amber-500 bg-amber-50' },
-              { name: 'Dermatology', code: 'DERM', count: '7 Specialists', icon: Microscope, color: 'text-purple-500 bg-purple-50' },
-              { name: 'Gynecology', code: 'OBGYN', count: '11 Specialists', icon: Building2, color: 'text-pink-500 bg-pink-50' },
-              { name: 'ENT Specialist', code: 'ENT', count: '8 Specialists', icon: PhoneCall, color: 'text-cyan-500 bg-cyan-50' },
-              { name: 'Emergency Room', code: 'EMERG', count: '24/7 Response', icon: ShieldCheck, color: 'text-rose-600 bg-rose-100 font-bold' },
+              { name: 'Cardiology', code: 'CARD', icon: HeartPulse, color: 'text-rose-500 bg-rose-50' },
+              { name: 'Neurology', code: 'NEUR', icon: BrainCircuit, color: 'text-indigo-500 bg-indigo-50' },
+              { name: 'Orthopedics', code: 'ORTH', icon: Activity, color: 'text-emerald-500 bg-emerald-50' },
+              { name: 'Pediatrics', code: 'PED', icon: Baby, color: 'text-amber-500 bg-amber-50' },
             ].map((dept) => {
               const IconComp = dept.icon;
+              const count = specialistCounts[dept.code] ?? 1;
+              const countText = `${count} ${count === 1 ? 'Specialist' : 'Specialists'}`;
               return (
                 <div key={dept.code} className="p-6 rounded-2xl bg-white border border-slate-200 hover:shadow-md transition text-center space-y-3">
                   <div className={`w-12 h-12 rounded-2xl mx-auto flex items-center justify-center ${dept.color}`}>
@@ -320,7 +197,7 @@ export const Landing: React.FC = () => {
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-900 text-base">{dept.name}</h4>
-                    <span className="text-xs text-slate-500 font-medium">{dept.count}</span>
+                    <span className="text-xs text-slate-500 font-medium">{countText}</span>
                   </div>
                 </div>
               );
@@ -345,7 +222,7 @@ export const Landing: React.FC = () => {
                 Protect sensitive patient data with JWT token verification, password hashing, automated immutable audit trails, and strict server-side role-based authorization.
               </p>
               <div className="space-y-3 pt-2">
-                {['AES-256 Data Encryption at rest and in transit', 'Immutable Audit Logs for every clinical action', 'Granular 8-Role Access Control (RBAC) Matrix'].map((item) => (
+                {['JWT Token Authentication & Verification', 'Comprehensive Audit Logging for all actions', 'Granular Role-Based Access Control (RBAC)'].map((item) => (
                   <div key={item} className="flex items-center space-x-3">
                     <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
                     <span className="text-sm font-semibold text-slate-200">{item}</span>
@@ -361,9 +238,9 @@ export const Landing: React.FC = () => {
               </h3>
               <div className="font-mono text-xs text-slate-300 space-y-2 bg-slate-950 p-4 rounded-2xl border border-slate-800">
                 <p className="text-emerald-400">✓ Auth Middleware: JWT Bearer Token Verified</p>
-                <p className="text-emerald-400">✓ RBAC Check: Doctor / Admin privileges required</p>
-                <p className="text-emerald-400">✓ Data Sanitization: MongoDB Injection Protected</p>
-                <p className="text-brand-400">✓ Audit Logged: User Doctor_101 viewed P-2026-001</p>
+                <p className="text-emerald-400">✓ RBAC Check: Role-based access enforced</p>
+                <p className="text-emerald-400">✓ Password Security: Bcrypt hashing enabled</p>
+                <p className="text-brand-400">✓ Audit Logged: All user actions tracked</p>
               </div>
             </div>
           </div>

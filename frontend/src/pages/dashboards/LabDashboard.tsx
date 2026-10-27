@@ -358,7 +358,7 @@ export const LabDashboard: React.FC = () => {
             </>
           ) : (
             <div className="py-12 text-center text-slate-400 text-sm">
-              Select a lab report requisition to view parameters and input diagnostic values.
+              Select a report requisition to view parameters and input diagnostic values.
             </div>
           )}
         </div>

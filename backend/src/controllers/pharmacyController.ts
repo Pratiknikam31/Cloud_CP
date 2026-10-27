@@ -366,9 +366,72 @@ export const getInventoryPredictions = async (req: AuthRequest, res: Response, n
 export const dispensePrescription = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { prescriptionId } = req.body;
+    if (!prescriptionId) {
+      // Return 404 consistent with "not found" semantics (tests expect 404 for missing id)
+      res.status(404).json({ success: false, message: 'Prescription not found' });
+      return;
+    }
 
-    // The "already dispensed" check runs inside change() on the current version,
-    // so two pharmacists dispensing at once cannot both succeed.
+    // Verify existing prescription first
+    const existing = await prescriptionRepo.get(prescriptionId);
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Prescription not found' });
+      return;
+    }
+    if (existing.status === 'dispensed') {
+      res.status(400).json({ success: false, message: 'Prescription already dispensed' });
+      return;
+    }
+
+    // Deduct stock for each prescribed medicine and write inventory transactions (PHA-05, B1)
+    if (existing.medicines && Array.isArray(existing.medicines)) {
+      const allMeds = await queryAll({ index: 'GSI1', pk: typePartition('MED') });
+      for (const item of existing.medicines) {
+        const medName = (item.medicineName || '').trim().toLowerCase();
+        if (!medName) continue;
+
+        const matched = allMeds.find((m) =>
+          m.name.toLowerCase() === medName ||
+          (m.genericName && m.genericName.toLowerCase() === medName) ||
+          medName.includes(m.name.toLowerCase()) ||
+          m.name.toLowerCase().includes(medName)
+        );
+
+        if (matched) {
+          const qtyToDeduct = 1;
+          await withRetry(() =>
+            medicineRepo.update(
+              matched._id,
+              (current) => {
+                if (current.quantity < qtyToDeduct) {
+                  throw new AppError(`Insufficient stock for ${current.name}`, 400);
+                }
+                const newQuantity = current.quantity - qtyToDeduct;
+                return {
+                  quantity: newQuantity,
+                  status: computeStatus({ ...current, quantity: newQuantity }),
+                };
+              },
+              {
+                extra: (current) => {
+                  const txCreated = inventoryTransactionRepo.prepareCreate({
+                    medicine: current._id,
+                    type: 'stock_out',
+                    quantity: qtyToDeduct,
+                    reason: `Dispensed for prescription ${existing.prescriptionId}`,
+                    performedBy: req.user!._id,
+                    timestamp: nowIso(),
+                  });
+                  return txCreated.ops;
+                },
+              }
+            )
+          );
+        }
+      }
+    }
+
+    // Mark prescription as dispensed atomically
     const prescription = await withRetry(() =>
       prescriptionRepo.update(prescriptionId, (current) => {
         if (current.status === 'dispensed') throw new AppError('Prescription already dispensed', 400);
@@ -392,8 +455,6 @@ export const dispensePrescription = async (req: AuthRequest, res: Response, next
       );
     }
 
-    // The medicines array is embedded in the prescription (the original
-    // populate('medicines') was a no-op), so it is returned as stored.
     res.status(200).json({
       success: true,
       message: 'Prescription marked as dispensed',
@@ -403,3 +464,4 @@ export const dispensePrescription = async (req: AuthRequest, res: Response, next
     next(err);
   }
 };
+

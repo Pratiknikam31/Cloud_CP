@@ -8,6 +8,7 @@ import { DashboardLayout } from './layouts/DashboardLayout';
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+import { ForgotPassword } from './pages/ForgotPassword';
 
 // Dashboard Pages
 import { AdminDashboard } from './pages/dashboards/AdminDashboard';
@@ -16,6 +17,7 @@ import { PatientDashboard } from './pages/dashboards/PatientDashboard';
 import { ReceptionistDashboard } from './pages/dashboards/ReceptionistDashboard';
 import { LabDashboard } from './pages/dashboards/LabDashboard';
 import { PharmacyDashboard } from './pages/dashboards/PharmacyDashboard';
+import { NurseDashboard } from './pages/dashboards/NurseDashboard';
 
 // Feature Pages
 import { SymptomChecker } from './pages/ai/SymptomChecker';
@@ -26,6 +28,9 @@ import { InventoryManager } from './pages/pharmacy/InventoryManager';
 import { BedManager } from './pages/beds/BedManager';
 import { BillingInvoice } from './pages/billing/BillingInvoice';
 import { AuditLogViewer } from './pages/admin/AuditLogViewer';
+import { UserManagement } from './pages/admin/UserManagement';
+import { PatientProfile } from './pages/PatientProfile';
+import { ReportsPage } from './pages/reports/ReportsPage';
 
 // Role Dashboard Dispatcher Component
 const DashboardDispatcher: React.FC = () => {
@@ -40,6 +45,8 @@ const DashboardDispatcher: React.FC = () => {
       return <DoctorDashboard />;
     case 'patient':
       return <PatientDashboard />;
+    case 'nurse':
+      return <NurseDashboard />;
     case 'receptionist':
       return <ReceptionistDashboard />;
     case 'lab_staff':
@@ -60,6 +67,7 @@ export const App: React.FC = () => {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* Protected Dashboard Routes */}
           <Route element={<ProtectedRoute />}>
@@ -71,6 +79,7 @@ export const App: React.FC = () => {
               <Route path="/admin/patients" element={<AdminDashboard />} />
               <Route path="/admin/doctors" element={<AdminDashboard />} />
               <Route path="/admin/departments" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<UserManagement />} />
               <Route path="/admin/appointments" element={<AppointmentBooking />} />
               <Route path="/admin/queue" element={<ReceptionistDashboard />} />
               <Route path="/admin/beds" element={<BedManager />} />
@@ -79,24 +88,29 @@ export const App: React.FC = () => {
               <Route path="/admin/billing" element={<BillingInvoice />} />
               <Route path="/admin/audit-logs" element={<AuditLogViewer />} />
 
+              {/* Nurse Routes */}
+              <Route path="/nurse/dashboard" element={<NurseDashboard />} />
+
               {/* Doctor Routes */}
               <Route path="/doctor/dashboard" element={<DoctorDashboard />} />
-              <Route path="/doctor/appointments" element={<DoctorDashboard />} />
+              <Route path="/doctor/appointments" element={<Navigate to="/doctor/dashboard" replace />} />
               <Route path="/doctor/patients" element={<DoctorDashboard />} />
               <Route path="/doctor/consultations" element={<EMRConsultation />} />
-              <Route path="/doctor/prescriptions" element={<EMRConsultation />} />
-              <Route path="/doctor/lab-reports" element={<LabDashboard />} />
+              <Route path="/doctor/prescriptions" element={<Navigate to="/doctor/consultations" replace />} />
+              <Route path="/doctor/lab-reports" element={<ReportsPage />} />
+              <Route path="/doctor/reports" element={<ReportsPage />} />
 
               {/* Patient Routes */}
               <Route path="/patient/dashboard" element={<PatientDashboard />} />
               <Route path="/patient/ai-recommendation" element={<SymptomChecker />} />
               <Route path="/patient/book-appointment" element={<AppointmentBooking />} />
               <Route path="/patient/appointments" element={<MyAppointments />} />
-              <Route path="/patient/medical-records" element={<EMRConsultation />} />
-              <Route path="/patient/prescriptions" element={<EMRConsultation />} />
-              <Route path="/patient/lab-reports" element={<LabDashboard />} />
+              <Route path="/patient/medical-records" element={<ReportsPage />} />
+              <Route path="/patient/prescriptions" element={<ReportsPage />} />
+              <Route path="/patient/lab-reports" element={<ReportsPage />} />
+              <Route path="/patient/reports" element={<ReportsPage />} />
               <Route path="/patient/bills" element={<BillingInvoice />} />
-              <Route path="/patient/profile" element={<PatientDashboard />} />
+              <Route path="/patient/profile" element={<PatientProfile />} />
 
               {/* Receptionist Routes */}
               <Route path="/reception/dashboard" element={<ReceptionistDashboard />} />

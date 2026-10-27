@@ -7,6 +7,6 @@ const router = Router();
 router.use(authenticateJWT);
 
 router.get('/overview', authorizeRoles('admin', 'doctor', 'receptionist'), getHospitalOverview);
-router.get('/search', globalSearch);
+router.get('/search', authorizeRoles('admin', 'doctor', 'receptionist', 'nurse'), globalSearch);
 
 export default router;

@@ -8,10 +8,6 @@ import {
   Lock, 
   ArrowRight, 
   Stethoscope, 
-  UserCheck, 
-  FlaskConical, 
-  Pill, 
-  Building2,
   AlertCircle,
   CheckCircle2
 } from 'lucide-react';
@@ -89,9 +85,6 @@ export const Login: React.FC = () => {
     { role: 'Hospital Admin', email: 'admin@smarthospital.org', icon: ShieldCheck, color: 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100' },
     { role: 'Chief Doctor', email: 'doctor@smarthospital.org', icon: Stethoscope, color: 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100' },
     { role: 'Patient', email: 'patient@smarthospital.org', icon: User, color: 'bg-brand-50 border-brand-200 text-brand-700 hover:bg-brand-100' },
-    { role: 'Receptionist', email: 'reception@smarthospital.org', icon: UserCheck, color: 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100' },
-    { role: 'Lab Technician', email: 'lab@smarthospital.org', icon: FlaskConical, color: 'bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-100' },
-    { role: 'Pharmacist', email: 'pharmacy@smarthospital.org', icon: Pill, color: 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100' },
   ];
 
   return (
@@ -114,33 +107,12 @@ export const Login: React.FC = () => {
         </div>
 
         <div className="relative z-10 my-auto py-12">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-brand-500/10 border border-brand-500/30 text-brand-300 text-xs font-semibold uppercase tracking-wider mb-6">
-            <ShieldCheck className="w-4 h-4 text-brand-400" />
-            <span>HIPAA-Compliant & Cloud-Native</span>
-          </div>
-
           <h1 className="text-4xl xl:text-5xl font-extrabold text-white leading-tight tracking-tight mb-4">
             Unified Smart Platform for Modern Hospitals.
           </h1>
           <p className="text-slate-300 text-lg leading-relaxed max-w-lg mb-8">
-            Seamless electronic health records, AI department routing, digital queue orchestration, and real-time pharmacy analytics.
+            A comprehensive healthcare management system with secure access controls and real-time operations.
           </p>
-
-          {/* Quick Metrics */}
-          <div className="grid grid-cols-3 gap-4 border-t border-slate-800 pt-8">
-            <div>
-              <p className="text-3xl font-extrabold text-white">99.99%</p>
-              <p className="text-xs text-slate-400 font-medium">Uptime Guarantee</p>
-            </div>
-            <div>
-              <p className="text-3xl font-extrabold text-brand-400">8 Roles</p>
-              <p className="text-xs text-slate-400 font-medium">Granular RBAC</p>
-            </div>
-            <div>
-              <p className="text-3xl font-extrabold text-medical-teal">&lt;15s</p>
-              <p className="text-xs text-slate-400 font-medium">AI Queue Dispatch</p>
-            </div>
-          </div>
         </div>
 
         <div className="relative z-10 text-xs text-slate-500 flex items-center justify-between border-t border-slate-800 pt-6">
@@ -182,12 +154,12 @@ export const Login: React.FC = () => {
           )}
 
           {/* One-Click Role Selector */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Quick Demo Login (Select Role)</label>
               <span className="text-xs font-semibold text-brand-600 bg-brand-50 px-2 py-0.5 rounded">Auto-fills credentials</span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {DEMO_ACCOUNTS.map((acc) => {
                 const IconComponent = acc.icon;
                 return (
@@ -196,12 +168,12 @@ export const Login: React.FC = () => {
                     type="button"
                     onClick={() => handleDemoLogin(acc.email, acc.role)}
                     disabled={loading}
-                    className={`p-3 rounded-xl border text-left transition-all duration-150 flex flex-col justify-between ${acc.color} ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-sm'}`}
+                    className={`p-4 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between ${acc.color} ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:shadow-md hover:-translate-y-0.5'}`}
                   >
-                    <IconComponent className="w-5 h-5 mb-2" />
+                    <IconComponent className="w-6 h-6 mb-2" />
                     <div>
-                      <span className="block font-bold text-xs leading-snug">{acc.role}</span>
-                      <span className="block text-[10px] opacity-75 truncate">{acc.email}</span>
+                      <span className="block font-bold text-sm leading-snug">{acc.role}</span>
+                      <span className="block text-[11px] opacity-75 truncate">{acc.email}</span>
                     </div>
                   </button>
                 );

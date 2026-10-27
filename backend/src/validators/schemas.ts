@@ -73,6 +73,9 @@ export const createMedicalRecordSchema = z.object({
   symptoms: z.string().min(3, 'Symptoms are required'),
   diagnosis: z.string().min(3, 'Diagnosis is required'),
   clinicalNotes: z.string().optional().default(''),
+  examinationNotes: z.string().optional().default(''),
+  investigationsRecommended: z.string().optional().default(''),
+  lifestyleAdvice: z.string().optional().default(''),
   vitals: z.object({
     bloodPressure: z.string().min(1),
     heartRate: z.number().min(0),
@@ -80,9 +83,10 @@ export const createMedicalRecordSchema = z.object({
     oxygenSaturation: z.number().min(0).max(100),
     weight: z.number().min(0),
     height: z.number().min(0),
+    respiratoryRate: z.number().optional().default(16),
   }),
   followUpDate: z.string().optional(),
-});
+}).passthrough();
 
 export const createPrescriptionSchema = z.object({
   patient: z.string().min(1, 'Patient is required'),
@@ -96,7 +100,7 @@ export const createPrescriptionSchema = z.object({
     instructions: z.string().min(1),
   })).min(1, 'At least one medicine is required'),
   notes: z.string().optional(),
-});
+}).passthrough();
 
 export const createMedicineSchema = z.object({
   name: z.string().min(2, 'Medicine name is required'),

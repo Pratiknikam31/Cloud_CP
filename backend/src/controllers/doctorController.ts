@@ -4,12 +4,14 @@ import { randomUUID } from 'crypto';
 import { AuthRequest } from '../middleware/auth';
 import { departmentRepo, doctorRepo } from '../repositories';
 import { createUserAccount, EMAIL_TAKEN, findUserByEmail } from '../repositories/userAccounts';
-import { Item, queryPage, QueryOptions } from '../db/dynamo';
-import { typePartition } from '../db/keys';
+import { findDoctorByUser } from '../repositories/profiles';
+import { Item, queryAll, queryPage, QueryOptions } from '../db/dynamo';
+import { doctorPartition, typePartition } from '../db/keys';
 import { populate } from '../db/populate';
 import { IDoctor } from '../types/entities';
 import { createDoctorSchema, updateDoctorSchema } from '../validators/schemas';
 import { logAudit } from '../utils/auditLogger';
+import { dayRangeIso, isoUpper, parseDate } from '../utils/dates';
 import { isDescending, paginationMeta, parseCursor, parseLimit, queryString } from '../utils/pagination';
 import { newDoctorId } from '../utils/ids';
 import { ConflictError } from '../utils/errors';
@@ -149,6 +151,21 @@ export const createDoctor = async (req: AuthRequest, res: Response, next: NextFu
 
 export const updateDoctor = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
+    const doctorId = req.params.id;
+    const existing = await doctorRepo.get(doctorId);
+    if (!existing) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    // Enforce doctor self-edit only and protect administrative fields (ADM-07, S8)
+    if (req.user?.role === 'doctor') {
+      const callerDoc = await findDoctorByUser(req.user.id);
+      if (!callerDoc || callerDoc._id !== doctorId) {
+        return res.status(403).json({ success: false, message: 'Access denied: You can only edit your own doctor profile' });
+      }
+      if (req.body.consultationFee !== undefined || req.body.department !== undefined || req.body.status !== undefined) {
+        return res.status(403).json({ success: false, message: 'Doctors cannot modify consultation fee, department, or administrative status' });
+      }
+    }
+
     const data = updateDoctorSchema.parse(req.body);
     if (data.department && !(await departmentRepo.get(data.department))) {
       return res.status(400).json({ success: false, message: 'Department not found' });
@@ -157,7 +174,7 @@ export const updateDoctor = async (req: AuthRequest, res: Response, next: NextFu
     if (data.name) patch.name = data.name.trim();
 
     // Versioned write; changing the department also moves the doctor's GSI2 entry.
-    const updated = await doctorRepo.update(req.params.id, () => patch);
+    const updated = await doctorRepo.update(doctorId, () => patch);
     if (!updated) return res.status(404).json({ success: false, message: 'Doctor not found' });
 
     await syncUserNamePhone(updated.user, { name: data.name, phone: data.phone });
@@ -198,12 +215,34 @@ export const getDoctorSlots = async (req: AuthRequest, res: Response, next: Next
   try {
     const doctor = await doctorRepo.get(req.params.id);
     if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+    const date = queryString(req.query.date);
+    let bookedSlots: string[] = [];
+    if (date) {
+      try {
+        const parsedDate = parseDate(date);
+        const [from, to] = dayRangeIso(parsedDate);
+        const appointments = await queryAll({
+          index: 'GSI3',
+          pk: doctorPartition(doctor._id),
+          sk: { between: [`APPT#${from}`, `APPT#${isoUpper(to)}`] },
+        });
+        bookedSlots = appointments
+          .filter((a) => a.status !== 'cancelled' && a.status !== 'no_show')
+          .map((a) => a.timeSlot);
+      } catch {
+        // invalid date query, ignore and leave bookedSlots empty
+      }
+    }
+
     return res.json({
       success: true,
       data: {
         availableDays: doctor.availableDays,
         availableTimeSlots: doctor.availableTimeSlots,
+        bookedSlots,
       },
+      bookedSlots,
     });
   } catch (error) {
     next(error);

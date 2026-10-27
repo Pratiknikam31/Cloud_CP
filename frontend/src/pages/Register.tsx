@@ -167,20 +167,14 @@ export const Register: React.FC = () => {
         {step === 'form' ? (
           /* ================= STEP 1: REGISTRATION FORM ================= */
           <form onSubmit={handleSendOtp} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Account Role</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as UserRole)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm bg-slate-50 focus:bg-white font-medium"
-              >
-                <option value="patient">Patient (Book Appointments & Medical History)</option>
-                <option value="doctor">Medical Doctor</option>
-                <option value="receptionist">Receptionist & Desk Officer</option>
-                <option value="lab_staff">Laboratory Technician</option>
-                <option value="pharmacist">Pharmacist</option>
-                <option value="hospital_admin">Hospital Admin</option>
-              </select>
+            <div className="p-3.5 bg-brand-50 border border-brand-200 rounded-xl flex items-center justify-between">
+              <div>
+                <span className="block text-xs font-bold text-brand-900 uppercase tracking-wider">Account Type</span>
+                <span className="text-sm font-semibold text-brand-700">Patient Portal Account</span>
+              </div>
+              <span className="text-[11px] font-medium text-slate-500 bg-white px-2 py-1 rounded-md border border-brand-100 shadow-sm">
+                Staff provisioned by Admin
+              </span>
             </div>
 
             <div>

@@ -145,36 +145,21 @@ export const DashboardLayout: React.FC = () => {
 
     if (role === 'super_admin' || role === 'hospital_admin' || role === 'admin') {
       return [
-        { label: 'Admin Analytics', path: '/admin/dashboard', icon: LayoutDashboard },
-        { label: 'Patients Directory', path: '/admin/patients', icon: Users },
-        { label: 'Doctors Directory', path: '/admin/doctors', icon: Stethoscope },
-        { label: 'Departments', path: '/admin/departments', icon: Building2 },
-        { label: 'Appointments', path: '/admin/appointments', icon: Calendar },
-        { label: 'Live Queue Manager', path: '/admin/queue', icon: ListOrdered },
-        { label: 'Bed Management', path: '/admin/beds', icon: BedDouble },
-        { label: 'Pharmacy Inventory', path: '/admin/pharmacy', icon: Pill },
-        { label: 'Laboratory Tests', path: '/admin/laboratory', icon: FlaskConical },
-        { label: 'Billing & Invoices', path: '/admin/billing', icon: Receipt },
-        { label: 'Audit Security Logs', path: '/admin/audit-logs', icon: ShieldCheck },
+        { label: 'Hospital Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
       ];
     } else if (role === 'doctor') {
       return [
         { label: 'Doctor Dashboard', path: '/doctor/dashboard', icon: LayoutDashboard },
-        { label: 'My Schedule', path: '/doctor/appointments', icon: Calendar },
         { label: 'Patient Consultations', path: '/doctor/consultations', icon: FileSpreadsheet },
-        { label: 'Prescriptions', path: '/doctor/prescriptions', icon: Pill },
-        { label: 'Lab Reports', path: '/doctor/lab-reports', icon: FlaskConical },
+        { label: 'Reports', path: '/doctor/lab-reports', icon: FileText },
       ];
     } else if (role === 'patient') {
       return [
         { label: 'Health Portal', path: '/patient/dashboard', icon: LayoutDashboard },
-        { label: 'AI Symptom Assister', path: '/patient/ai-recommendation', icon: BrainCircuit },
+        { label: 'My Profile', path: '/patient/profile', icon: User },
         { label: 'Book Appointment', path: '/patient/book-appointment', icon: Calendar },
         { label: 'My Appointments', path: '/patient/appointments', icon: Calendar },
-        { label: 'Medical History', path: '/patient/medical-records', icon: FileSpreadsheet },
-        { label: 'Prescriptions', path: '/patient/prescriptions', icon: Pill },
-        { label: 'Lab Reports', path: '/patient/lab-reports', icon: FlaskConical },
-        { label: 'Billing & Receipts', path: '/patient/bills', icon: Receipt },
+        { label: 'Reports', path: '/patient/lab-reports', icon: FileText },
       ];
     } else if (role === 'receptionist') {
       return [
@@ -185,7 +170,7 @@ export const DashboardLayout: React.FC = () => {
       ];
     } else if (role === 'nurse') {
       return [
-        { label: 'Nurse Station', path: '/dashboard', icon: LayoutDashboard },
+        { label: 'Nurse Station', path: '/nurse/dashboard', icon: LayoutDashboard },
         { label: 'Bed & Ward Status', path: '/admin/beds', icon: BedDouble },
         { label: 'Patient Queue', path: '/reception/queue', icon: ListOrdered },
         { label: 'EMR Records', path: '/doctor/consultations', icon: FileSpreadsheet },

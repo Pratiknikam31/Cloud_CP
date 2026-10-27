@@ -4,7 +4,7 @@ import {
   getInventoryForecast,
   getBedOccupancyForecast
 } from '../controllers/aiController';
-import { authenticateJWT } from '../middleware/auth';
+import { authenticateJWT, authorizeRoles } from '../middleware/auth';
 
 const router = Router();
 
@@ -12,7 +12,7 @@ const router = Router();
 router.post('/symptoms', analyzeSymptoms);
 
 router.use(authenticateJWT);
-router.get('/inventory-forecast', getInventoryForecast);
-router.get('/bed-forecast', getBedOccupancyForecast);
+router.get('/inventory-forecast', authorizeRoles('admin', 'pharmacist'), getInventoryForecast);
+router.get('/bed-forecast', authorizeRoles('admin', 'doctor', 'nurse', 'receptionist'), getBedOccupancyForecast);
 
 export default router;

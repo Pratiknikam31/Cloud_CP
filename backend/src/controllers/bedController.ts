@@ -168,6 +168,13 @@ export const getBeds = async (req: AuthRequest, res: Response, next: NextFunctio
       filteredBeds = beds.filter((b: any) => b.room && b.room.roomType === ward);
     }
 
+    // For non-staff (patients), strip occupant details (PAT-09, S9)
+    if (req.user?.role === 'patient') {
+      for (const b of filteredBeds) {
+        delete b.currentPatient;
+      }
+    }
+
     // Calculate statistics
     const totalBeds = beds.length;
     const occupied = beds.filter((b) => b.status === 'occupied').length;
@@ -208,11 +215,17 @@ export const getBedById = async (req: AuthRequest, res: Response, next: NextFunc
       populate([bed], 'currentPatient', patientRepo, ['name', 'patientId', 'bloodGroup', 'gender', 'phone', 'address']),
     ]);
 
+    // Strip occupant details for non-staff
+    if (req.user?.role === 'patient') {
+      delete bed.currentPatient;
+    }
+
     res.status(200).json({ success: true, data: { bed } });
   } catch (err) {
     next(err);
   }
 };
+
 
 export const createBed = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {

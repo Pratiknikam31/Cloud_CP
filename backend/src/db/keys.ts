@@ -34,6 +34,12 @@ export const slotLockKey = (doctorId: string, dayKey: string, timeSlot: string) 
   SK: 'SLOT',
 });
 
+// One item per (patient, day, time slot) while an active appointment holds it.
+export const patientSlotLockKey = (patientId: string, dayKey: string, timeSlot: string) => ({
+  PK: `PATIENT_SLOT#${patientId}#${dayKey}#${timeSlot}`,
+  SK: 'SLOT',
+});
+
 // ---- Aggregate / statistics items (maintained with atomic ADD) ----
 export const STATS = {
   totals: { PK: 'STATS#TOTALS', SK: 'TOTALS' }, // patients, appointments

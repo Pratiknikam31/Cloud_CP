@@ -259,6 +259,15 @@ export const getLabReportById = async (req: AuthRequest, res: Response, next: Ne
       return;
     }
 
+    // Patient can only view their own lab report (LAB-06)
+    if (req.user?.role === 'patient') {
+      const p = await findPatientByUser(req.user.id);
+      if (!p || p._id !== found.patient) {
+        res.status(403).json({ success: false, message: 'Access denied: You can only view your own lab reports' });
+        return;
+      }
+    }
+
     const report: any = { ...found };
     await Promise.all([
       populate([report], 'patient', patientRepo, ['name', 'patientId', 'bloodGroup', 'gender', 'phone', 'address', 'dob']),
@@ -323,8 +332,23 @@ export const updateLabReport = async (req: AuthRequest, res: Response, next: Nex
   try {
     const validated = updateLabReportSchema.parse(req.body);
 
+    const existing = await labReportRepo.get(req.params.id);
+    if (!existing) {
+      res.status(404).json({ success: false, message: 'Lab report not found' });
+      return;
+    }
+
+    // Completed report cannot be reopened / results wiped (LAB-08, S10)
+    if (existing.status === 'completed' && validated.status && validated.status !== 'completed') {
+      res.status(400).json({ success: false, message: 'Completed lab report cannot be reopened or transitioned back to a prior status' });
+      return;
+    }
+
     // Version-checked update: a concurrent change to the same report returns 409.
-    const report = await labReportRepo.update(req.params.id, () => {
+    const report = await labReportRepo.update(req.params.id, (current) => {
+      if (current.status === 'completed' && validated.status && validated.status !== 'completed') {
+        throw new BadRequestError('Completed lab report cannot be reopened');
+      }
       const patch: Partial<ILabReport> = {};
       if (validated.status) patch.status = validated.status;
       if (validated.results) patch.results = validated.results;
@@ -336,6 +360,7 @@ export const updateLabReport = async (req: AuthRequest, res: Response, next: Nex
       res.status(404).json({ success: false, message: 'Lab report not found' });
       return;
     }
+
 
     const populated: any = { ...report };
     await Promise.all([

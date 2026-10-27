@@ -12,6 +12,7 @@ import { parseDate } from '../utils/dates';
 import { newBillId } from '../utils/ids';
 import { paginationMeta, parseCursor, parseLimit, queryString } from '../utils/pagination';
 import { retryOnConflict } from '../services/facilitiesFinanceService';
+import { BadRequestError } from '../utils/errors';
 
 // Billing totals for GET /api/billing/stats live in one aggregate item
 // (STATS#BILLING) instead of being summed over every bill on each request:
@@ -45,7 +46,8 @@ export const getBills = async (req: AuthRequest, res: Response, next: NextFuncti
     const limit = parseLimit(req.query.limit, 20, 100);
     const cursor = parseCursor(req.query.cursor);
     const status = queryString(req.query.status);
-    let patientId = queryString(req.query.patientId);
+    // Accept both ?patientId= and ?patient= query params
+    let patientId = queryString(req.query.patientId) || queryString(req.query.patient);
     const search = queryString(req.query.search) || '';
 
     // Patient role scoped to their own bills
@@ -109,6 +111,16 @@ export const getBillById = async (req: AuthRequest, res: Response, next: NextFun
       res.status(404).json({ success: false, message: 'Bill not found' });
       return;
     }
+
+    // Patient can only view their own bills (BILL-04)
+    if (req.user?.role === 'patient') {
+      const p = await findPatientByUser(req.user._id || req.user.id);
+      if (!p || p._id !== found.patient) {
+        res.status(403).json({ success: false, message: 'Access denied: You can only view your own bills' });
+        return;
+      }
+    }
+
     const bill: any = billRepo.toPublic(found);
     await populate([bill], 'patient', patientRepo);
     res.status(200).json({ success: true, data: { bill } });
@@ -184,6 +196,43 @@ export const recordPayment = async (req: AuthRequest, res: Response, next: NextF
   try {
     const validated = recordPaymentSchema.parse(req.body);
 
+    const found = await billRepo.get(req.params.id);
+    if (!found) {
+      res.status(404).json({ success: false, message: 'Bill not found' });
+      return;
+    }
+
+    // Patient payment ownership check (BILL-05: Patient cannot pay another patient's bill)
+    if (req.user?.role === 'patient') {
+      const p = await findPatientByUser(req.user._id || req.user.id);
+      if (!p || p._id !== found.patient) {
+        res.status(403).json({ success: false, message: 'Forbidden: You cannot record payments on another patient\'s bill' });
+        return;
+      }
+    }
+
+    // Prevent payment on already fully paid bill (BILL-09)
+    // For patients only: also prevent overpayment on already-paid bills
+    if (req.user?.role === 'patient' && (found.status === 'paid' || found.balance <= 0)) {
+      res.status(400).json({ success: false, message: 'Cannot record payment: Invoice is already fully paid' });
+      return;
+    }
+
+    // For patients only: guard against overpayment beyond remaining balance (BILL-08)
+    // Staff (admin, receptionist, billing_staff) may record amounts > balance; the system clamps balance at 0.
+    if (req.user?.role === 'patient' && validated.amount > found.balance) {
+      res.status(400).json({
+        success: false,
+        message: `Payment amount ($${validated.amount}) exceeds outstanding balance ($${found.balance})`
+      });
+      return;
+    }
+
+    if (validated.amount <= 0) {
+      res.status(400).json({ success: false, message: 'Payment amount must be greater than zero' });
+      return;
+    }
+
     // Read-modify-write with a version check: the payment is added to the
     // amount stored at that moment. If another payment lands at the same time
     // the write fails and is retried on the fresh values, so no payment is lost.
@@ -191,10 +240,18 @@ export const recordPayment = async (req: AuthRequest, res: Response, next: NextF
       billRepo.update(
         req.params.id,
         (current) => {
+          // Re-check fully-paid guard for patients inside the retry loop
+          if (req.user?.role === 'patient' && (current.status === 'paid' || current.balance <= 0)) {
+            throw new BadRequestError('Cannot record payment: Invoice is already fully paid');
+          }
+          // Re-check overpayment guard for patients inside the retry loop
+          if (req.user?.role === 'patient' && validated.amount > current.balance) {
+            throw new BadRequestError(`Payment amount ($${validated.amount}) exceeds outstanding balance ($${current.balance})`);
+          }
           const paidAmount = current.paidAmount + validated.amount;
           const balance = Math.max(0, current.totalAmount - paidAmount);
-          let status = current.status;
-          if (balance === 0) {
+          let status: PaymentStatus = current.status;
+          if (balance === 0 || paidAmount >= current.totalAmount) {
             status = 'paid';
           } else if (paidAmount > 0) {
             status = 'partially_paid';
@@ -204,6 +261,7 @@ export const recordPayment = async (req: AuthRequest, res: Response, next: NextF
         { extra: (current, next) => [statsAdd(STATS.billing, statsDelta(current, next))] }
       )
     );
+
     if (!bill) {
       res.status(404).json({ success: false, message: 'Bill not found' });
       return;

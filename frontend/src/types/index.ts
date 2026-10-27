@@ -112,6 +112,9 @@ export interface MedicalRecord {
   symptoms: string;
   diagnosis: string;
   clinicalNotes: string;
+  examinationNotes?: string;
+  investigationsRecommended?: string;
+  lifestyleAdvice?: string;
   vitals: {
     bloodPressure: string;
     heartRate: number;
@@ -119,6 +122,7 @@ export interface MedicalRecord {
     oxygenSaturation: number;
     weight: number;
     height: number;
+    respiratoryRate?: number;
   };
   attachments: string[];
   followUpDate?: string;
