@@ -94,23 +94,23 @@ export const Landing: React.FC = () => {
                 </span>
               </h1>
 
-              <p className="text-lg sm:text-xl text-slate-600 font-normal leading-relaxed max-w-2xl">
-                An enterprise-grade SaaS platform.
+              <p className="text-base sm:text-lg text-slate-600 font-normal leading-relaxed max-w-2xl">
+                An enterprise-grade cloud healthcare platform powering end-to-end hospital operations, specialist coordination, real-time clinical workflows, and patient telemetry.
               </p>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                 <Link
                   to="/login"
-                  className="px-8 py-4 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-base shadow-xl shadow-brand-500/25 hover:shadow-brand-500/40 transition-all flex items-center justify-center space-x-3 group"
+                  className="px-8 py-4 rounded-2xl bg-gradient-to-r from-brand-600 via-brand-500 to-medical-teal hover:from-brand-700 hover:to-teal-700 text-white font-extrabold text-sm shadow-xl shadow-brand-500/30 hover:shadow-brand-500/50 transition-all flex items-center justify-center space-x-3 group transform hover:-translate-y-0.5"
                 >
-                  <span>Explore Live Demo</span>
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  <span>Explore Live Portal</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
                 <Link
                   to="/register"
-                  className="px-8 py-4 rounded-2xl bg-white hover:bg-slate-100 text-slate-800 font-bold text-base border border-slate-200 transition-all flex items-center justify-center space-x-2 shadow-sm"
+                  className="px-8 py-4 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 font-extrabold text-sm border border-slate-200/90 transition-all flex items-center justify-center space-x-2 shadow-xs hover:shadow-sm"
                 >
-                  <span>Patient Portal</span>
+                  <span>Register Patient</span>
                 </Link>
               </div>
             </div>

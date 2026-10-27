@@ -207,32 +207,36 @@ export const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="space-y-8 pb-16 font-sans">
       {/* ── HEADER ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-white/70 backdrop-blur-md border border-slate-200/80 shadow-xs">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center space-x-3">
+          <div className="flex items-center space-x-2 text-[11px] font-bold text-brand-600 uppercase tracking-widest mb-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse"></span>
+            <span>Clinical Operations Command</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center space-x-3">
             <span>Hospital Administration</span>
             {refreshing && <RefreshCw className="w-5 h-5 text-brand-600 animate-spin" />}
           </h1>
-          <p className="text-slate-500 text-sm mt-1">
-            Departments · Doctors · Patients — complete clinical overview.
+          <p className="text-slate-500 text-xs sm:text-sm mt-1">
+            Real-time analytics across departments, clinical specialists, and patient telemetry.
           </p>
         </div>
         <div className="flex items-center space-x-3">
           <button
             onClick={fetchAll}
-            className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs transition"
-            title="Refresh"
+            className="p-2.5 rounded-2xl border border-slate-200/90 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-xs hover:shadow-sm transition-all"
+            title="Refresh Data"
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-brand-600' : ''}`} />
           </button>
           <button
             onClick={handleExportCSV}
-            className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs shadow-xs transition"
+            className="flex items-center space-x-2 px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5"
           >
-            <Download className="w-4 h-4 text-slate-500" />
-            <span>Export CSV</span>
+            <Download className="w-4 h-4 text-slate-300" />
+            <span>Export CSV Report</span>
           </button>
         </div>
       </div>
@@ -240,31 +244,41 @@ export const AdminDashboard: React.FC = () => {
       {/* ── KPI CARDS ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
         {[
-          { label: 'Departments',     value: departments.length,                                                                                          sub: 'Active wings',       icon: Building2,    color: 'blue'    },
-          { label: 'Doctors',         value: doctors.length,                                                                                              sub: `${departments.length} specialties`, icon: Stethoscope, color: 'indigo'  },
-          { label: 'Total Patients',  value: new Set(appointments.map((a: any) => typeof a.patient === 'object' ? a.patient?._id : a.patient)).size,     sub: 'Unique registered',  icon: Users,        color: 'emerald' },
-          { label: 'Upcoming Appts',  value: totalUpcoming,                                                                                               sub: 'In queue / booked',  icon: Calendar,     color: 'amber'   },
-          { label: 'Completed',       value: totalCompleted,                                                                                              sub: 'Consultations done', icon: CheckCircle2, color: 'teal'    },
-          { label: 'Cancelled',       value: totalCancelled,                                                                                              sub: 'Dropped / no-show',  icon: AlertTriangle,color: 'rose'    },
+          { label: 'Departments',     value: departments.length,                                                                                          sub: 'Active Wings',       icon: Building2,    color: 'blue',   glow: 'rgba(12,147,231,0.1)'   },
+          { label: 'Doctors',         value: doctors.length,                                                                                              sub: `${departments.length} Specialties`, icon: Stethoscope, color: 'indigo', glow: 'rgba(99,102,241,0.1)' },
+          { label: 'Total Patients',  value: new Set(appointments.map((a: any) => typeof a.patient === 'object' ? a.patient?._id : a.patient)).size,     sub: 'Registered',         icon: Users,        color: 'emerald',glow: 'rgba(16,185,129,0.1)' },
+          { label: 'Upcoming Appts',  value: totalUpcoming,                                                                                               sub: 'Queue Active',       icon: Calendar,     color: 'amber',  glow: 'rgba(245,158,11,0.1)'  },
+          { label: 'Completed',       value: totalCompleted,                                                                                              sub: 'Consultations Done', icon: CheckCircle2, color: 'teal',   glow: 'rgba(13,148,136,0.1)'  },
+          { label: 'Cancelled',       value: totalCancelled,                                                                                              sub: 'Dropped / Void',    icon: AlertTriangle,color: 'rose',   glow: 'rgba(244,63,94,0.1)'   },
         ].map(({ label, value, sub, icon: Icon, color }) => {
-          const colorMap: Record<string, string> = {
-            blue:    'bg-blue-50 text-blue-600',
-            indigo:  'bg-indigo-50 text-indigo-600',
-            emerald: 'bg-emerald-50 text-emerald-600',
-            amber:   'bg-amber-50 text-amber-600',
-            teal:    'bg-teal-50 text-teal-600',
-            rose:    'bg-rose-50 text-rose-600',
+          const colorStyles: Record<string, { iconBg: string; text: string; badge: string; accent: string }> = {
+            blue:    { iconBg: 'bg-blue-50 text-blue-600',       text: 'text-blue-600',    badge: 'bg-blue-50/80 text-blue-700',       accent: 'from-blue-500 to-cyan-500' },
+            indigo:  { iconBg: 'bg-indigo-50 text-indigo-600',   text: 'text-indigo-600',  badge: 'bg-indigo-50/80 text-indigo-700',   accent: 'from-indigo-500 to-purple-500' },
+            emerald: { iconBg: 'bg-emerald-50 text-emerald-600', text: 'text-emerald-600', badge: 'bg-emerald-50/80 text-emerald-700',accent: 'from-emerald-500 to-teal-500' },
+            amber:   { iconBg: 'bg-amber-50 text-amber-600',     text: 'text-amber-600',   badge: 'bg-amber-50/80 text-amber-700',     accent: 'from-amber-500 to-orange-500' },
+            teal:    { iconBg: 'bg-teal-50 text-teal-600',       text: 'text-teal-600',    badge: 'bg-teal-50/80 text-teal-700',       accent: 'from-teal-500 to-cyan-500' },
+            rose:    { iconBg: 'bg-rose-50 text-rose-600',       text: 'text-rose-600',    badge: 'bg-rose-50/80 text-rose-700',       accent: 'from-rose-500 to-pink-500' },
           };
+          const style = colorStyles[color];
           return (
-            <div key={label} className="p-5 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition">
+            <div 
+              key={label} 
+              className="relative p-5 rounded-3xl bg-white border border-slate-200/90 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden group"
+            >
+              {/* Subtle top color highlight accent */}
+              <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${style.accent} opacity-80 group-hover:h-1.5 transition-all`} />
+              
               <div className="flex items-start justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-tight">{label}</span>
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${colorMap[color]}`}>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-tight">{label}</span>
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${style.iconBg} shadow-2xs group-hover:scale-110 transition-transform`}>
                   <Icon className="w-4 h-4" />
                 </div>
               </div>
-              <p className="text-2xl font-extrabold text-slate-900 mt-3">{value}</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">{sub}</p>
+              <p className="text-3xl font-black text-slate-900 mt-3 tracking-tight font-mono">{value}</p>
+              <div className="flex items-center space-x-1.5 mt-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{sub}</p>
+              </div>
             </div>
           );
         })}
@@ -273,47 +287,53 @@ export const AdminDashboard: React.FC = () => {
       {/* ── CHARTS ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Appointment Trend */}
-        <div className="lg:col-span-8 p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
+        <div className="lg:col-span-8 p-6 rounded-3xl bg-white border border-slate-200/90 shadow-xs hover:shadow-md transition-all space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4">
             <div>
-              <h3 className="font-bold text-slate-900 text-lg">Appointment Volume Trend</h3>
-              <p className="text-slate-500 text-xs">Monthly total vs completed consultations</p>
+              <div className="flex items-center space-x-2">
+                <span className="w-2 h-2 rounded-full bg-brand-500"></span>
+                <h3 className="font-extrabold text-slate-900 text-lg">Appointment Volume Trend</h3>
+              </div>
+              <p className="text-slate-500 text-xs mt-0.5">Monthly total scheduled vs completed consultations</p>
             </div>
-            <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-xl flex items-center space-x-1">
-              <BarChart3 className="w-3.5 h-3.5 mr-1" />
-              6-Month View
+            <span className="text-xs font-bold text-slate-600 bg-slate-100/80 border border-slate-200/60 px-3 py-1.5 rounded-xl flex items-center space-x-1.5 shadow-2xs self-start sm:self-auto">
+              <BarChart3 className="w-3.5 h-3.5 text-brand-600" />
+              <span>6-Month Clinical Telemetry</span>
             </span>
           </div>
-          <div className="h-64 w-full">
+          <div className="h-64 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="gradApt" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0c93e7" stopOpacity={0.3} />
+                    <stop offset="5%" stopColor="#0c93e7" stopOpacity={0.35} />
                     <stop offset="95%" stopColor="#0c93e7" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="gradDone" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#059669" stopOpacity={0.3} />
+                    <stop offset="5%" stopColor="#059669" stopOpacity={0.35} />
                     <stop offset="95%" stopColor="#059669" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} />
                 <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} />
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '12px' }} />
-                <Legend iconType="circle" iconSize={8} />
-                <Area type="monotone" dataKey="appointments" stroke="#0c93e7" strokeWidth={2.5} fillOpacity={1} fill="url(#gradApt)" name="Total Appointments" />
-                <Area type="monotone" dataKey="completed" stroke="#059669" strokeWidth={2.5} fillOpacity={1} fill="url(#gradDone)" name="Completed" />
+                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '14px', border: 'none', color: '#fff', fontSize: '12px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)' }} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ paddingTop: '10px' }} />
+                <Area type="monotone" dataKey="appointments" stroke="#0c93e7" strokeWidth={3} fillOpacity={1} fill="url(#gradApt)" name="Total Appointments" />
+                <Area type="monotone" dataKey="completed" stroke="#059669" strokeWidth={3} fillOpacity={1} fill="url(#gradDone)" name="Completed" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Department Distribution */}
-        <div className="lg:col-span-4 p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-4">
-          <div>
-            <h3 className="font-bold text-slate-900 text-lg">Department Load</h3>
-            <p className="text-slate-500 text-xs">Appointment split across wings</p>
+        <div className="lg:col-span-4 p-6 rounded-3xl bg-white border border-slate-200/90 shadow-xs hover:shadow-md transition-all space-y-4">
+          <div className="border-b border-slate-100 pb-4">
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full bg-medical-teal"></span>
+              <h3 className="font-extrabold text-slate-900 text-lg">Department Load</h3>
+            </div>
+            <p className="text-slate-500 text-xs mt-0.5">Appointment distribution across clinical wings</p>
           </div>
           {departmentPieData.length > 0 ? (
             <>
@@ -325,20 +345,20 @@ export const AdminDashboard: React.FC = () => {
                         <Cell key={idx} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '11px' }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
               <div className="space-y-2 border-t border-slate-100 pt-3">
                 {departmentPieData.slice(0, 5).map((item: any) => (
-                  <div key={item.name} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-2">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                      <span className="text-slate-600 truncate max-w-[100px]">{item.name}</span>
+                  <div key={item.name} className="flex items-center justify-between text-xs p-1 rounded-lg hover:bg-slate-50 transition">
+                    <div className="flex items-center space-x-2 truncate">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: item.color }} />
+                      <span className="text-slate-700 font-medium truncate max-w-[120px]">{item.name}</span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-slate-400 text-[11px]">{item.doctors} dr</span>
-                      <span className="font-bold text-slate-900">{item.value}</span>
+                    <div className="flex items-center space-x-2 shrink-0">
+                      <span className="text-slate-400 text-[11px] font-mono">{item.doctors} dr</span>
+                      <span className="font-bold text-slate-900 font-mono bg-slate-100 px-2 py-0.5 rounded-md">{item.value}</span>
                     </div>
                   </div>
                 ))}
@@ -352,10 +372,10 @@ export const AdminDashboard: React.FC = () => {
 
       {/* ── STATUS BAR CHART ── */}
       {appointments.length > 0 && departments.length > 0 && (
-        <div className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm">
-          <div className="mb-5">
-            <h3 className="font-bold text-slate-900 text-lg">Appointment Status by Department</h3>
-            <p className="text-slate-500 text-xs">Upcoming vs completed per clinical wing</p>
+        <div className="p-6 rounded-3xl bg-white border border-slate-200/90 shadow-xs hover:shadow-md transition-all">
+          <div className="mb-5 border-b border-slate-100 pb-3">
+            <h3 className="font-extrabold text-slate-900 text-lg">Appointment Status by Department</h3>
+            <p className="text-slate-500 text-xs mt-0.5">Upcoming vs completed consultations per clinical specialty</p>
           </div>
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
@@ -379,10 +399,10 @@ export const AdminDashboard: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" fontSize={11} tickLine={false} stroke="#94a3b8" />
                 <YAxis fontSize={11} tickLine={false} stroke="#94a3b8" />
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '10px', border: 'none', color: '#fff', fontSize: '12px' }} />
+                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '12px' }} />
                 <Legend iconType="circle" iconSize={8} />
-                <Bar dataKey="upcoming" fill="#f59e0b" name="Upcoming / In Queue" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="completed" fill="#059669" name="Completed" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="upcoming" fill="#f59e0b" name="Upcoming / In Queue" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="completed" fill="#059669" name="Completed" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -391,26 +411,26 @@ export const AdminDashboard: React.FC = () => {
 
       {/* ── DEPARTMENT → DOCTOR → PATIENT HIERARCHY ── */}
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-3xl bg-white/70 backdrop-blur-md border border-slate-200/80 shadow-2xs">
           <div>
-            <h2 className="text-xl font-extrabold text-slate-900 tracking-tight flex items-center space-x-2">
+            <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center space-x-2">
               <Building2 className="w-5 h-5 text-brand-600" />
-              <span>Departments · Doctors · Patients</span>
+              <span>Departments · Clinical Specialists · Patient Roster</span>
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Click a department or doctor row to expand. Filter patients by status below.
+              Interactive clinical drill-down. Filter patient consultation records by status.
             </p>
           </div>
-          <div className="flex items-center space-x-1 bg-white border border-slate-200 p-1 rounded-xl shadow-xs text-xs">
+          <div className="flex items-center space-x-1 bg-slate-100/80 border border-slate-200/80 p-1.5 rounded-2xl shadow-2xs text-xs">
             {(['all', 'upcoming', 'completed'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setPatientFilter(f)}
-                className={`px-3 py-1.5 rounded-lg font-bold transition capitalize ${
-                  patientFilter === f ? 'bg-brand-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
+                className={`px-3.5 py-1.5 rounded-xl font-extrabold transition capitalize ${
+                  patientFilter === f ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
                 }`}
               >
-                {f === 'all' ? 'All' : f === 'upcoming' ? 'Upcoming' : 'Completed'}
+                {f === 'all' ? 'All Patients' : f === 'upcoming' ? 'Upcoming' : 'Completed'}
               </button>
             ))}
           </div>
@@ -419,20 +439,20 @@ export const AdminDashboard: React.FC = () => {
         {/* Search + Dept Filter */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
             <input
               type="text"
               placeholder="Search doctors, specializations, departments..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs font-medium outline-none focus:ring-2 focus:ring-brand-500 bg-slate-50 focus:bg-white transition"
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-slate-200/90 text-xs sm:text-sm font-medium outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 bg-white shadow-xs transition"
             />
           </div>
           <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
             <button
               onClick={() => setSelectedDeptFilter('all')}
-              className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-                selectedDeptFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+              className={`px-3.5 py-2.5 rounded-2xl text-xs font-extrabold whitespace-nowrap transition-all shadow-2xs ${
+                selectedDeptFilter === 'all' ? 'bg-slate-900 text-white shadow-sm' : 'bg-white border border-slate-200/90 text-slate-600 hover:bg-slate-50'
               }`}
             >
               All Depts
@@ -441,8 +461,8 @@ export const AdminDashboard: React.FC = () => {
               <button
                 key={dept._id}
                 onClick={() => setSelectedDeptFilter(dept._id)}
-                className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-                  selectedDeptFilter === dept._id ? 'bg-brand-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                className={`px-3.5 py-2.5 rounded-2xl text-xs font-extrabold whitespace-nowrap transition-all shadow-2xs ${
+                  selectedDeptFilter === dept._id ? 'bg-brand-600 text-white shadow-brand-500/20 shadow-md' : 'bg-white border border-slate-200/90 text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 {dept.name}
@@ -470,37 +490,42 @@ export const AdminDashboard: React.FC = () => {
             const deptCompleted = deptApts.filter((a: any) => a.status === 'completed').length;
 
             return (
-              <div key={dept._id} className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <div key={dept._id} className="rounded-3xl border border-slate-200/90 bg-white shadow-xs hover:shadow-md transition-all overflow-hidden">
                 {/* Department header */}
                 <button
                   onClick={() => toggleDept(dept._id)}
-                  className="w-full flex items-center justify-between p-5 sm:p-6 hover:bg-slate-50/60 transition text-left"
+                  className="w-full flex items-center justify-between p-5 sm:p-6 hover:bg-slate-50/70 transition-all text-left"
                 >
                   <div className="flex items-center space-x-4">
                     <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-sm shrink-0"
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-md shrink-0 ring-2 ring-white/50"
                       style={{ backgroundColor: deptColor }}
                     >
                       {dept.name?.charAt(0)}
                     </div>
                     <div>
-                      <h3 className="font-extrabold text-slate-900 text-base">{dept.name}</h3>
-                      <div className="flex items-center space-x-3 mt-1 text-xs text-slate-500">
-                        <span><strong className="text-slate-800">{deptDocs.length}</strong> Doctors</span>
-                        <span className="text-amber-600"><strong>{deptUpcoming}</strong> Upcoming</span>
-                        <span className="text-emerald-600"><strong>{deptCompleted}</strong> Completed</span>
-                        <span className="hidden sm:block text-slate-400">{deptApts.length} total</span>
+                      <h3 className="font-black text-slate-900 text-base flex items-center space-x-2">
+                        <span>{dept.name}</span>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase">Wing {dept.code || 'CLIN'}</span>
+                      </h3>
+                      <div className="flex items-center flex-wrap gap-2.5 mt-1 text-xs">
+                        <span className="font-semibold text-slate-700 bg-slate-100/70 px-2 py-0.5 rounded-md"><strong className="text-slate-900">{deptDocs.length}</strong> Specialists</span>
+                        <span className="text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/50"><strong>{deptUpcoming}</strong> In Queue</span>
+                        <span className="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/50"><strong>{deptCompleted}</strong> Consulted</span>
+                        <span className="hidden sm:inline-block text-slate-400 font-mono text-[11px]">{deptApts.length} total records</span>
                       </div>
                     </div>
                   </div>
-                  {isDeptExpanded
-                    ? <ChevronDown className="w-5 h-5 text-slate-400 shrink-0" />
-                    : <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
-                  }
+                  <div className="p-2 rounded-xl bg-slate-100 text-slate-500 hover:text-slate-900 transition">
+                    {isDeptExpanded
+                      ? <ChevronDown className="w-5 h-5 shrink-0" />
+                      : <ChevronRight className="w-5 h-5 shrink-0" />
+                    }
+                  </div>
                 </button>
 
                 {isDeptExpanded && (
-                  <div className="border-t border-slate-100 divide-y divide-slate-100">
+                  <div className="border-t border-slate-100 divide-y divide-slate-100 bg-slate-50/30">
                     {deptDocs.map((doc: any) => {
                       const isDrExpanded = expandedDoctors.has(doc._id);
                       const docPatients = getDoctorPatients(doc._id, patientFilter);
@@ -508,40 +533,48 @@ export const AdminDashboard: React.FC = () => {
                       const docCompleted = getDoctorPatients(doc._id, 'completed').length;
 
                       return (
-                        <div key={doc._id}>
+                        <div key={doc._id} className="transition-colors">
                           <button
                             onClick={() => toggleDoctor(doc._id)}
-                            className="w-full flex items-center justify-between px-6 py-4 hover:bg-slate-50/60 transition text-left"
+                            className="w-full flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-all text-left"
                           >
                             <div className="flex items-center space-x-4">
                               <div
-                                className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-extrabold text-sm shrink-0"
-                                style={{ backgroundColor: deptColor + 'cc' }}
+                                className="w-10 h-10 rounded-2xl flex items-center justify-center text-white font-extrabold text-sm shrink-0 shadow-xs"
+                                style={{ backgroundColor: deptColor }}
                               >
                                 {doc.name?.replace('Dr. ', '').charAt(0)}
                               </div>
                               <div>
-                                <p className="font-extrabold text-slate-900 text-sm">{doc.name}</p>
-                                <p className="text-[11px] text-slate-500">
+                                <p className="font-black text-slate-900 text-sm flex items-center space-x-2">
+                                  <span>{doc.name}</span>
+                                  {doc.roomNumber && (
+                                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-500">
+                                      Rm {doc.roomNumber}
+                                    </span>
+                                  )}
+                                </p>
+                                <p className="text-[11px] text-slate-500 font-medium">
                                   {doc.specialization}
                                   {doc.qualification && ` · ${doc.qualification}`}
-                                  {doc.roomNumber && ` · Room ${doc.roomNumber}`}
                                 </p>
                               </div>
                             </div>
                             <div className="flex items-center space-x-3 shrink-0">
                               <div className="hidden sm:flex items-center space-x-2 text-[11px]">
-                                <span className="px-2.5 py-1 rounded-xl bg-amber-50 text-amber-700 font-bold">
-                                  {docUpcoming} upcoming
+                                <span className="px-2.5 py-1 rounded-xl bg-amber-50 text-amber-700 font-bold border border-amber-200/50">
+                                  {docUpcoming} queued
                                 </span>
-                                <span className="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 font-bold">
+                                <span className="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 font-bold border border-emerald-200/50">
                                   {docCompleted} done
                                 </span>
                               </div>
-                              {isDrExpanded
-                                ? <ChevronDown className="w-4 h-4 text-slate-400" />
-                                : <ChevronRight className="w-4 h-4 text-slate-400" />
-                              }
+                              <div className="p-1 rounded-lg text-slate-400 hover:text-slate-600">
+                                {isDrExpanded
+                                  ? <ChevronDown className="w-4 h-4" />
+                                  : <ChevronRight className="w-4 h-4" />
+                                }
+                              </div>
                             </div>
                           </button>
 
@@ -557,17 +590,17 @@ export const AdminDashboard: React.FC = () => {
                                   }
                                 </div>
                               ) : (
-                                <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                                <div className="overflow-x-auto rounded-2xl border border-slate-200/90 bg-white shadow-xs">
                                   <table className="w-full text-left text-xs">
-                                    <thead className="bg-slate-50 border-b border-slate-100">
+                                    <thead className="bg-slate-50/80 border-b border-slate-100">
                                       <tr className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                                        <th className="py-3 px-4">#</th>
-                                        <th className="py-3 px-4">Patient</th>
-                                        <th className="py-3 px-4">Appointment Date</th>
-                                        <th className="py-3 px-4">Time Slot</th>
-                                        <th className="py-3 px-4">Chief Complaint</th>
-                                        <th className="py-3 px-4">Type</th>
-                                        <th className="py-3 px-4">Status</th>
+                                        <th className="py-3.5 px-4"># Queue</th>
+                                        <th className="py-3.5 px-4">Patient Details</th>
+                                        <th className="py-3.5 px-4">Consultation Date</th>
+                                        <th className="py-3.5 px-4">Time Slot</th>
+                                        <th className="py-3.5 px-4">Chief Complaint</th>
+                                        <th className="py-3.5 px-4">Visit Mode</th>
+                                        <th className="py-3.5 px-4">Status</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -578,33 +611,35 @@ export const AdminDashboard: React.FC = () => {
                                           : '';
                                         const sc = statusConfig[apt.status] || statusConfig.pending;
                                         return (
-                                          <tr key={apt._id || i} className="hover:bg-slate-50/80 transition">
-                                            <td className="py-3 px-4 font-mono font-bold text-brand-600">
-                                              #{apt.queueNumber || i + 1}
+                                          <tr key={apt._id || i} className="hover:bg-brand-50/30 transition-colors">
+                                            <td className="py-3.5 px-4 font-mono font-black text-brand-600">
+                                              <span className="px-2 py-0.5 rounded-md bg-brand-50 border border-brand-200/60 text-[11px]">
+                                                #{apt.queueNumber || i + 1}
+                                              </span>
                                             </td>
-                                            <td className="py-3 px-4">
-                                              <p className="font-bold text-slate-900">{patientName}</p>
+                                            <td className="py-3.5 px-4">
+                                              <p className="font-extrabold text-slate-900">{patientName}</p>
                                               {patientId && <p className="text-slate-400 font-mono text-[10px]">{patientId}</p>}
                                             </td>
-                                            <td className="py-3 px-4 text-slate-600 font-semibold whitespace-nowrap">
+                                            <td className="py-3.5 px-4 text-slate-700 font-medium whitespace-nowrap">
                                               {apt.date
                                                 ? new Date(apt.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
                                                 : '—'}
                                             </td>
-                                            <td className="py-3 px-4 text-slate-500 whitespace-nowrap">
+                                            <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px] whitespace-nowrap">
                                               {apt.timeSlot || '—'}
                                             </td>
-                                            <td className="py-3 px-4 text-slate-600 max-w-[160px] truncate" title={apt.symptoms}>
-                                              {apt.symptoms || 'General consultation'}
+                                            <td className="py-3.5 px-4 text-slate-600 max-w-[180px] truncate" title={apt.symptoms}>
+                                              {apt.symptoms || 'General clinical review'}
                                             </td>
-                                            <td className="py-3 px-4">
-                                              <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 capitalize text-[10px] font-semibold">
+                                            <td className="py-3.5 px-4">
+                                              <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 capitalize text-[10px] font-bold">
                                                 {apt.type?.replace('_', ' ') || 'in person'}
                                               </span>
                                             </td>
-                                            <td className="py-3 px-4">
-                                              <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${sc.bg} ${sc.color}`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+                                            <td className="py-3.5 px-4">
+                                              <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold border border-current/15 ${sc.bg} ${sc.color}`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${sc.dot} animate-pulse`} />
                                                 <span>{sc.label}</span>
                                               </span>
                                             </td>
@@ -618,13 +653,13 @@ export const AdminDashboard: React.FC = () => {
                               {/* Doctor Quick Stats */}
                               <div className="mt-3 grid grid-cols-3 gap-3">
                                 {[
-                                  { label: 'Total Booked', value: getDoctorPatients(doc._id, 'all').length, color: 'text-slate-700' },
-                                  { label: 'Upcoming',     value: docUpcoming,                               color: 'text-amber-600' },
-                                  { label: 'Consulted',    value: docCompleted,                              color: 'text-emerald-600' },
-                                ].map(({ label, value, color }) => (
-                                  <div key={label} className="bg-white border border-slate-200 rounded-2xl p-3 text-center">
-                                    <p className={`text-xl font-extrabold ${color}`}>{value}</p>
-                                    <p className="text-[10px] text-slate-400 font-semibold mt-0.5">{label}</p>
+                                  { label: 'Total Patients', value: getDoctorPatients(doc._id, 'all').length, color: 'text-slate-900',  bg: 'bg-white',        border: 'border-slate-200/90' },
+                                  { label: 'In Queue',       value: docUpcoming,                               color: 'text-amber-700', bg: 'bg-amber-50/50', border: 'border-amber-200/60' },
+                                  { label: 'Consulted',      value: docCompleted,                              color: 'text-emerald-700',bg: 'bg-emerald-50/50', border: 'border-emerald-200/60' },
+                                ].map(({ label, value, color, bg, border }) => (
+                                  <div key={label} className={`${bg} border ${border} rounded-2xl p-3 text-center shadow-2xs`}>
+                                    <p className={`text-xl font-black font-mono ${color}`}>{value}</p>
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-0.5">{label}</p>
                                   </div>
                                 ))}
                               </div>
